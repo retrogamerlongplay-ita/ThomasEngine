@@ -13,7 +13,8 @@ import it.mpace.thomas.res.PlayerRes;
 public class Player {
 	// Stati del giocatore
 	public enum State {
-		IDLE, WALKING, PUNCHING, KICKING, CROUCHING, JUMPING, GRABBED, DEAD, PUNCHING_CROUCH, KICKING_CROUCH
+		IDLE, WALKING, PUNCHING, KICKING, CROUCHING, JUMPING, GRABBED, DEAD, PUNCHING_CROUCH, KICKING_CROUCH,
+		KICKING_JUMP
 	}
 
 	private final float HURT_DURATION = 0.1f; // Durata del "dolore"
@@ -24,7 +25,7 @@ public class Player {
 	private final int STRUGGLE_THRESHOLD = 10; // Quante volte premere per liberarsi
 
 	private float speed = GameControlRes.PLAYER_SPEED;
-	public boolean facingRight = true;
+	public boolean facingRight = false;
 	private float stateTime;
 
 	private float velocityY = 0;
@@ -91,7 +92,7 @@ public class Player {
 		}
 
 		// --- FISICA DI CADUTA SEMPRE ATTIVA (anche se GRABBED o DEAD) ---
-		if ((position.y > 510 || velocityY > 0)&& currentState != State.DEAD) {
+		if ((position.y > 510 || velocityY > 0) && currentState != State.DEAD) {
 			position.y += velocityY * deltaTime;
 			velocityY -= GRAVITY * deltaTime;
 
@@ -104,15 +105,15 @@ public class Player {
 					currentState = State.IDLE;
 			}
 		}
-		
-		//LIMITI DEL LIVELLO
+
+		// LIMITI DEL LIVELLO
 		if (position.x > LevelConstants.FIRST_FLOOR_RIGHT) {
-	        position.x = LevelConstants.FIRST_FLOOR_RIGHT;
-	    }
-		
+			position.x = LevelConstants.FIRST_FLOOR_RIGHT;
+		}
+
 		if (position.x < LevelConstants.FIRST_FLOOR_LEFT_STAIR) {
-	        position.x = LevelConstants.FIRST_FLOOR_LEFT_STAIR;
-	    }
+			position.x = LevelConstants.FIRST_FLOOR_LEFT_STAIR;
+		}
 
 		if (currentState == State.DEAD) {
 			stateTime += deltaTime;
@@ -189,52 +190,52 @@ public class Player {
 			}
 			return;
 		} else // --- ATTACCO BASSO (Pugno) ---
-			if (currentState == State.PUNCHING_CROUCH) {
-			    if (PlayerRes.punchCrouchAnim.isAnimationFinished(stateTime)) {
-			        currentState = State.CROUCHING; // Torna abbassato, non IDLE!
-			    } else {
-			        if (PlayerRes.punchCrouchAnim.getKeyFrameIndex(stateTime) == 1) {
-			            float hw = 18; float hh = 8;
-			            // Y abbassata (es. GROUND_Y + 20 invece di 40)
-			            hitbox.set(facingRight ? position.x : position.x - hw, position.y + 27, hw, hh);
-			        }
-			    }
-			    return;
-			} 
-			else // --- ATTACCO BASSO (Calcio) ---
-				if (currentState == State.KICKING_CROUCH) {
-				    if (PlayerRes.kickCrouchAnim.isAnimationFinished(stateTime)) {
-				        currentState = State.CROUCHING;
-				    } else {
-				        if (PlayerRes.kickCrouchAnim.getKeyFrameIndex(stateTime) == 1) {
-				            float hw = 26; float hh = 10; // Il calcio basso è molto lungo!
-				            hitbox.set(facingRight ? position.x : position.x - hw, position.y , hw, hh);
-				        }
-				    }
-				    return;
+		if (currentState == State.PUNCHING_CROUCH) {
+			if (PlayerRes.punchCrouchAnim.isAnimationFinished(stateTime)) {
+				currentState = State.CROUCHING; // Torna abbassato, non IDLE!
+			} else {
+				if (PlayerRes.punchCrouchAnim.getKeyFrameIndex(stateTime) == 1) {
+					float hw = 18;
+					float hh = 8;
+					// Y abbassata (es. GROUND_Y + 20 invece di 40)
+					hitbox.set(facingRight ? position.x : position.x - hw, position.y + 27, hw, hh);
 				}
-		else {
+			}
+			return;
+		} else // --- ATTACCO BASSO (Calcio) ---
+		if (currentState == State.KICKING_CROUCH) {
+			if (PlayerRes.kickCrouchAnim.isAnimationFinished(stateTime)) {
+				currentState = State.CROUCHING;
+			} else {
+				if (PlayerRes.kickCrouchAnim.getKeyFrameIndex(stateTime) == 1) {
+					float hw = 26;
+					float hh = 10; // Il calcio basso è molto lungo!
+					hitbox.set(facingRight ? position.x : position.x - hw, position.y, hw, hh);
+				}
+			}
+			return;
+		} else {
 			hitbox.set(0, 0, 0, 0); // Disattiva la hitbox se non attacca
 		}
 
 		// --- INPUT EVASIONE E ATTACCO BASSO ---
 		if (Gdx.input.isKeyPressed(Input.Keys.DOWN) && currentState != State.JUMPING) {
-		    
-		    // Se premo Z mentre sono giù -> Pugno Basso
-		    if (Gdx.input.isKeyJustPressed(Input.Keys.Z)) {
-		        currentState = State.PUNCHING_CROUCH;
-		        stateTime = 0;
-		    } 
-		    // Se premo X mentre sono giù -> Calcio Basso
-		    else if (Gdx.input.isKeyJustPressed(Input.Keys.X)) {
-		        currentState = State.KICKING_CROUCH;
-		        stateTime = 0;
-		    } 
-		    // Altrimenti resta semplicemente abbassato
-		    else if (currentState != State.PUNCHING_CROUCH && currentState != State.KICKING_CROUCH) {
-		        currentState = State.CROUCHING;
-		    }
-		    return; 
+
+			// Se premo Z mentre sono giù -> Pugno Basso
+			if (Gdx.input.isKeyJustPressed(Input.Keys.Z)) {
+				currentState = State.PUNCHING_CROUCH;
+				stateTime = 0;
+			}
+			// Se premo X mentre sono giù -> Calcio Basso
+			else if (Gdx.input.isKeyJustPressed(Input.Keys.X)) {
+				currentState = State.KICKING_CROUCH;
+				stateTime = 0;
+			}
+			// Altrimenti resta semplicemente abbassato
+			else if (currentState != State.PUNCHING_CROUCH && currentState != State.KICKING_CROUCH) {
+				currentState = State.CROUCHING;
+			}
+			return;
 		}
 
 		if (Gdx.input.isKeyJustPressed(Input.Keys.UP) && position.y <= 510 && currentState != State.JUMPING) {
@@ -254,8 +255,8 @@ public class Player {
 			stateTime = 0;
 			return;
 		}
-		
-		//INPUT DI CONTROLLO DEL GIOCO forse bisogna metterli in una classe a parte
+
+		// INPUT DI CONTROLLO DEL GIOCO forse bisogna metterli in una classe a parte
 		if (Gdx.input.isKeyJustPressed(Input.Keys.D)) {
 			System.out.println("D pressed");
 			GameControlRes.debugMode = true;
@@ -267,7 +268,7 @@ public class Player {
 			return;
 		}
 		if (Gdx.input.isKeyJustPressed(Input.Keys.P)) {
-			System.out.println("POSITION ("+position.x+","+position.y+")");
+			System.out.println("POSITION (" + position.x + "," + position.y + ")");
 			return;
 		}
 
@@ -319,11 +320,11 @@ public class Player {
 			keyFrame = PlayerRes.jumpAnim.getKeyFrame(stateTime);
 			break;
 		case PUNCHING_CROUCH:
-		    keyFrame = PlayerRes.punchCrouchAnim.getKeyFrame(stateTime);
-		    break;
+			keyFrame = PlayerRes.punchCrouchAnim.getKeyFrame(stateTime);
+			break;
 		case KICKING_CROUCH:
-		    keyFrame = PlayerRes.kickCrouchAnim.getKeyFrame(stateTime);
-		    break;
+			keyFrame = PlayerRes.kickCrouchAnim.getKeyFrame(stateTime);
+			break;
 		default:
 			keyFrame = PlayerRes.idleFrame;
 			break;
@@ -343,28 +344,29 @@ public class Player {
 			batch.draw(keyFrame, drawX + width, position.y, -width, height);
 		}
 	}
-	
+
 	// Aggiungi questo metodo nella classe Player
 	public boolean checkAndResetLiberation() {
-		//System.out.println(struggleCount+" / "+STRUGGLE_THRESHOLD);
-	    if (struggleCount >= STRUGGLE_THRESHOLD) {
-	    	//System.out.println("LIBERATO");
-	        struggleCount = 0;
-	        currentState = State.IDLE; // Thomas torna libero
-	        stateTime = 0;
-	        return true;
-	    }
-	    return false;
-	}
-
-	/*public boolean checkLiberation() {
-		if (currentState == State.GRABBED && struggleCount >= STRUGGLE_THRESHOLD) {
-			currentState = State.IDLE;
+		// System.out.println(struggleCount+" / "+STRUGGLE_THRESHOLD);
+		if (struggleCount >= STRUGGLE_THRESHOLD) {
+			// System.out.println("LIBERATO");
 			struggleCount = 0;
-			return true; // Thomas si è appena liberato!
+			currentState = State.IDLE; // Thomas torna libero
+			stateTime = 0;
+			return true;
 		}
 		return false;
-	}*/
+	}
+
+	public boolean isAttacking() {
+		if (this.currentState == Player.State.KICKING || this.currentState == Player.State.PUNCHING
+				|| this.currentState == Player.State.PUNCHING_CROUCH || this.currentState == Player.State.KICKING_CROUCH
+				|| this.currentState == Player.State.KICKING_JUMP) {
+			return true;
+		} else {
+			return false;
+		}
+	}
 
 	public void resetStateTime() {
 		this.stateTime = 0;

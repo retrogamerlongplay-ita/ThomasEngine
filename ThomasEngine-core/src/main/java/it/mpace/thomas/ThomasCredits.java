@@ -60,6 +60,13 @@ package it.mpace.thomas;
  * <li>Implemented Level limits</li>
  * <li>Implemented LevelScreen logic</li>
  * </ol>
+ * 
+ *  @version 0.0.17
+ * <ol>
+ * <li>Boss1 upgraded IA</li>
+ * <li>Boss1 hitbox implementation</li>
+ * <li>Resolved bug in time death</li>
+ * </ol>
  */
 
 public class ThomasCredits {

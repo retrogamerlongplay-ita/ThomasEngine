@@ -45,7 +45,7 @@ public class LevelScreen implements Screen {
 	private Array<Knife> knives = new Array<>();
 
 	private Texture whitePixel = null;
-	
+
 	private int knifeThrowersSpawned = 0;
 	private final int MAX_KNIFE_THROWERS_LEVEL_1 = 2;
 
@@ -61,7 +61,7 @@ public class LevelScreen implements Screen {
 		camera.position.y = LevelConstants.FIRST_FLOOR_Y;
 		player = new Player(LevelConstants.FIRST_FLOOR_RIGHT_START, LevelConstants.FIRST_FLOOR_GROUND_Y);
 		boss = new StickFighter(LevelConstants.FIRST_FLOOR_LEFT_STAIR, LevelConstants.FIRST_FLOOR_GROUND_Y);
-
+		// camera.update();
 		shapeRenderer = new ShapeRenderer();
 		font = new BitmapFont();
 		font.getData().setScale(0.5f); // Rimpicciolisci per la tua camera 256x256
@@ -88,7 +88,9 @@ public class LevelScreen implements Screen {
 		GameControlRes.gameTime -= GameControlRes.TIME_SPEED * dt;
 		if (GameControlRes.gameTime <= 0) {
 			GameControlRes.gameTime = 0;
-			player.triggerDeath(); // Il tempo scaduto uccide Thomas
+			if (player.currentState != Player.State.DEAD) {
+				player.triggerDeath();
+			}
 		}
 
 		// 2. UPDATE DEL GIOCATORE
@@ -100,7 +102,7 @@ public class LevelScreen implements Screen {
 			for (Enemy e : enemies) {
 				if (e instanceof Gripper && ((Gripper) e).state == Gripper.GripperState.GRABBING) {
 					Gripper g = (Gripper) e;
-					g.hit(); // Il nemico muore e vola via
+					g.hit(player); // Il nemico muore e vola via
 					// Opzionale: aggiungi punti extra per la liberazione
 					g.position.x += (g.position.x > player.position.x) ? 20 : -20;
 					GameControlRes.incrementScore(50);
@@ -110,15 +112,21 @@ public class LevelScreen implements Screen {
 			camera.position.y += 2; // Un piccolo sussulto della camera
 		}
 
+		boolean isBossActive = (boss.getState() != StickFighter.State.WAITING
+				&& boss.getState() != StickFighter.State.DEAD);
+
 		// 4. LOGICA NEMICI (Loop a ritroso per sicurezza)
 		for (int i = enemies.size - 1; i >= 0; i--) {
 			Enemy e = enemies.get(i);
+			if (isBossActive) {
+				e.flee();
+			}
 
 			// Update specifico in base al tipo di nemico
 			if (e instanceof KnifeThrower) {
-				((KnifeThrower) e).update(dt, player.position, knives); // Passiamo l'array dei coltelli
+				((KnifeThrower) e).update(dt, player, knives); // Passiamo l'array dei coltelli
 			} else {
-				e.update(dt, player.position);
+				e.update(dt, player);
 			}
 
 			// --- COLLISIONE: Thomas colpisce Nemico ---
@@ -126,7 +134,7 @@ public class LevelScreen implements Screen {
 					|| player.currentState == State.PUNCHING_CROUCH || player.currentState == State.KICKING_CROUCH)
 					&& !e.isDying) {
 				if (player.hitbox.overlaps(e.hurtbox)) {
-					e.hit();
+					e.hit(player);
 					if (e.isDying) {
 						GameControlRes.incrementScore(e instanceof KnifeThrower ? 500 : 100);
 					} else {
@@ -144,21 +152,20 @@ public class LevelScreen implements Screen {
 					g.state = Gripper.GripperState.WALKING; // O FLEEING se preferisci
 					// Opzionale: dai una piccola spinta all'indietro al nemico per "distacco"
 					g.position.x += (g.position.x > player.position.x) ? 10 : -10;
-				}else if( !e.isDying && player.currentState != State.GRABBED
-					&& player.currentState != State.PUNCHING && player.currentState != State.KICKING
-					&& player.currentState != State.DEAD) {
+				} else if (!e.isDying && player.currentState != State.GRABBED && player.currentState != State.PUNCHING
+						&& player.currentState != State.KICKING && player.currentState != State.DEAD) {
 					float distanceX = Math.abs(player.position.x - e.position.x);
 					if (distanceX < 12f) { // Distanza per l'abbraccio
 						player.currentState = State.GRABBED;
 						((Gripper) e).state = Gripper.GripperState.GRABBING;
 						((Gripper) e).isGrabbedFromRight = (e.position.x > player.position.x);
 					}
-				}else if (player.currentState == State.GRABBED && e instanceof Gripper
+				} else if (player.currentState == State.GRABBED && e instanceof Gripper
 						&& ((Gripper) e).state == Gripper.GripperState.GRABBING) {
 					GameControlRes.decrementEnergy(15f * dt);
 				}
 			}
-			
+
 			// Rimozione nemici morti/usciti di scena
 			if (!e.active)
 				enemies.removeIndex(i);
@@ -196,6 +203,38 @@ public class LevelScreen implements Screen {
 		// Logica specifica: se il boss attacca, i minions scappano
 		boolean bossActive = (boss.getState() == StickFighter.State.WALKING);
 
+		if (boss.getState() == StickFighter.State.ATTACKING_HIGH||boss.getState() == StickFighter.State.ATTACKING_LOW||boss.getState() == StickFighter.State.ATTACKING_MID) {
+			// Se la hitbox del bastone tocca Thomas e lui non è già morto o appena colpito
+			if (boss.stickHitbox.overlaps(player.hurtbox) && player.currentState != Player.State.DEAD) {
+				player.takeHit(15f); // Danno consistente dal boss
+				// Opzionale: aggiungi un piccolo rinculo a Thomas
+				player.position.x += (boss.position.x > player.position.x) ? -10 : 10;
+			}
+		}
+		
+		if (boss.getState() != StickFighter.State.DEAD && !boss.isDying) {
+		    // Se Thomas prova ad andare a SINISTRA del Boss (verso le scale)
+		    if (player.position.x < boss.position.x + 3) { 
+		        player.position.x = boss.position.x + 3;
+		        // Opzionale: se Thomas insiste a spingere, il Boss lo colpisce subito
+		    }
+		}
+		
+		if (!boss.isDying && player.isAttacking()) { // isAttacking() controlla se Thomas è in PUNCH o KICK
+		    if (player.hitbox.overlaps(boss.hurtbox)) {
+		        // Applichiamo il danno solo se il boss non è già in animazione di "Hurt" 
+		        // per evitare che un singolo pugno tolga 10 HP in un colpo solo
+		        if (boss.getState() != StickFighter.State.HURT_HIGH && 
+		            boss.getState() != StickFighter.State.HURT_LOW) {
+		            
+		            boss.hit(player);
+		            GameControlRes.incrementScore(200); // Punti per aver colpito il boss
+		            
+		            // Effetto "Hit Stop": potresti fermare il tempo per 0.05s per dare impatto
+		        }
+		    }
+		}
+
 		for (int i = minions.size - 1; i >= 0; i--) {
 			Enemy m = minions.get(i);
 			if (bossActive)
@@ -207,7 +246,7 @@ public class LevelScreen implements Screen {
 				minions.removeIndex(i);
 		}
 
-		boss.update(dt, player.getPosition());
+		boss.update(dt, player);
 		// 6. CAMERA E SPAWN
 		updateCamera();
 		handleSpawning(dt);
@@ -216,8 +255,8 @@ public class LevelScreen implements Screen {
 	private void updateCamera() {
 		// La camera segue la posizione X del giocatore
 		if (player.currentState == Player.State.DEAD) {
-	        return; // Esci subito: la camera resta ferma dov'era al momento del colpo ferale
-	    }
+			return; // Esci subito: la camera resta ferma dov'era al momento del colpo ferale
+		}
 		camera.position.x = player.position.x;
 
 		// Vincoli della camera per non mostrare il "vuoto" oltre i limiti del piano
@@ -256,14 +295,14 @@ public class LevelScreen implements Screen {
 				enemies.clear();
 				player.respawn(LevelConstants.FIRST_FLOOR_RIGHT_START, LevelConstants.FIRST_FLOOR_GROUND_Y);
 				boss = new StickFighter(LevelConstants.FIRST_FLOOR_LEFT_STAIR, LevelConstants.FIRST_FLOOR_GROUND_Y);
-				enemies.add(boss);
+				// enemies.add(boss);
 				camera.position.x = player.position.x;
 
 				deathTimer = 0;
 			} else {
 				// Logica Game Over definitiva
 				GameControlRes.lives = 0;
-				// System.out.println("GAME OVER - Ritorno al Titolo");
+				System.out.println("GAME OVER - Ritorno al Titolo");
 				// Qui potresti cambiare Screen se usi la classe Game di libGDX
 			}
 		}
@@ -271,6 +310,8 @@ public class LevelScreen implements Screen {
 
 	private void handleSpawning(float dt) {
 		spawnTimer += dt;
+		if (boss.getState() != StickFighter.State.WAITING)
+			return;
 
 		if (spawnTimer >= spawnInterval) {
 			// 1. Calcoliamo l'offset fuori dallo schermo (metà camera 128 + margine 32 =
@@ -293,12 +334,12 @@ public class LevelScreen implements Screen {
 			if (MathUtils.random() < 0.25f) {
 				if (knifeThrowersSpawned < MAX_KNIFE_THROWERS_LEVEL_1) {
 					newEnemy = new KnifeThrower(spawnX, LevelConstants.FIRST_FLOOR_GROUND_Y);
-	                knifeThrowersSpawned++;
-	            } else {
-	                // Se i KnifeThrower sono finiti, spawna un Gripper normale
-	            	newEnemy = new Gripper(spawnX, LevelConstants.FIRST_FLOOR_GROUND_Y);
-	            }
-				
+					knifeThrowersSpawned++;
+				} else {
+					// Se i KnifeThrower sono finiti, spawna un Gripper normale
+					newEnemy = new Gripper(spawnX, LevelConstants.FIRST_FLOOR_GROUND_Y);
+				}
+
 			} else {
 				newEnemy = new Gripper(spawnX, LevelConstants.FIRST_FLOOR_GROUND_Y);
 			}
@@ -312,10 +353,7 @@ public class LevelScreen implements Screen {
 	}
 
 	private void draw() {
-		// batch.setProjectionMatrix(camera.combined);
-		// batch.begin();
 		// Disegna sfondo, Thomas, Minions e infine il Boss
-		// batch.end();
 		float dt = Math.min(Gdx.graphics.getDeltaTime(), 1 / 60f);
 
 		// LOGICA DI STATO
@@ -327,7 +365,6 @@ public class LevelScreen implements Screen {
 		} else {
 			// Unica chiamata necessaria: gestisce update, collisioni e SPAWN
 			update(dt);
-
 			// Controllo morte per energia
 			if (GameControlRes.energy <= 0)
 				player.triggerDeath();
@@ -339,6 +376,7 @@ public class LevelScreen implements Screen {
 		batch.begin();
 		batch.draw(background, 0, 0);
 		player.draw(batch);
+		boss.draw(batch);
 		for (Enemy e : enemies) {
 			e.draw(batch);
 		}
@@ -391,24 +429,28 @@ public class LevelScreen implements Screen {
 		// Barra Nemico (Bianca - fissa o legata al Boss)
 		batch.setColor(Color.WHITE);
 		batch.draw(whitePixel, 160, 35, 60, 8);// TODO legata al boss
-
 		batch.setColor(Color.WHITE); // Reset finale
 	}
 
 	private void drawDebugShapes() {
 		shapeRenderer.setProjectionMatrix(camera.combined);
 		shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-
 		// Player Hitbox (Rossa) e Hurtbox (Verde)
 		shapeRenderer.setColor(Color.RED);
 		shapeRenderer.rect(player.hitbox.x, player.hitbox.y, player.hitbox.width, player.hitbox.height);
 		shapeRenderer.setColor(Color.GREEN);
 		shapeRenderer.rect(player.hurtbox.x, player.hurtbox.y, player.hurtbox.width, player.hurtbox.height);
+		shapeRenderer.setColor(Color.RED);
+	    shapeRenderer.rect(boss.stickHitbox.x, boss.stickHitbox.y, boss.stickHitbox.width, boss.stickHitbox.height);
 
 		// Nemici (Gialla)
 		shapeRenderer.setColor(Color.YELLOW);
 		for (Enemy e : enemies) {
 			shapeRenderer.rect(e.hurtbox.x, e.hurtbox.y, e.hurtbox.width, e.hurtbox.height);
+		}
+		// AGGIUNGI QUESTA RIGA: Disegna esplicitamente quella del Boss
+		if (boss != null) {
+		    shapeRenderer.rect(boss.hurtbox.x, boss.hurtbox.y, boss.hurtbox.width, boss.hurtbox.height);
 		}
 
 		// Coltelli (Ciano)
@@ -416,7 +458,6 @@ public class LevelScreen implements Screen {
 		for (Knife k : knives) {
 			shapeRenderer.rect(k.hitbox.x, k.hitbox.y, k.hitbox.width, k.hitbox.height);
 		}
-
 		shapeRenderer.end();
 	}
 
@@ -477,7 +518,4 @@ public class LevelScreen implements Screen {
 		// TODO Auto-generated method stub
 
 	}
-
-	// Altri metodi obbligatori: resize, show, hide, dispose...
-
 }

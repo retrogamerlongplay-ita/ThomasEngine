@@ -36,7 +36,7 @@ public class KnifeThrower extends Enemy {
 
 	// Sovrascriviamo l'update per accettare la lista dei coltelli
 	// In ThomasMain chiameremo: ((KnifeThrower)e).update(dt, playerPos, knives);
-	public void update(float dt, Vector2 playerPos, Array<Knife> fieldKnives) {
+	public void update(float dt, Player player, Array<Knife> fieldKnives) {
 		
 
 		if (isDying) {
@@ -45,7 +45,7 @@ public class KnifeThrower extends Enemy {
 		}
 
 		stateTime += dt;
-		float distance = Math.abs(position.x - playerPos.x);
+		float distance = Math.abs(position.x - player.position.x);
 		
 		 // Gestione stordimento ultra-rapido
         if (state == State.HURT) {
@@ -66,7 +66,7 @@ public class KnifeThrower extends Enemy {
 				knivesThrown = 0;
 			} else {
 				// Inseguimento
-				facingRight = (position.x < playerPos.x);
+				facingRight = (position.x < player.position.x);
 				position.x += (facingRight ? speed : -speed) * dt;
 			}
 			break;
@@ -104,11 +104,11 @@ public class KnifeThrower extends Enemy {
 			break;
 		case RETREATING:
 			// 1. Movimento di allontanamento
-			float retreatDir = (position.x > playerPos.x) ? 1 : -1;
+			float retreatDir = (position.x > player.position.x) ? 1 : -1;
 			facingRight = (retreatDir > 0);
 			position.x += (speed * RETREAT_SPEED_MULT) * retreatDir * dt;
 
-			float currentDistance = Math.abs(position.x - playerPos.x);
+			float currentDistance = Math.abs(position.x - player.position.x);
 
 			// 2. Controllo se deve tornare o scappare
 			if (!fleeingForever) {
@@ -143,7 +143,7 @@ public class KnifeThrower extends Enemy {
 
 	// Metodo richiesto dalla superclasse Enemy (vuoto o chiama l'altro update)
 	@Override
-	public void update(float dt, Vector2 playerPos) {
+	public void update(float dt, Player player) {
 		// Questo verrà usato se non passiamo i coltelli,
 		// ma noi useremo l'overload sopra in ThomasMain
 	}
@@ -156,8 +156,8 @@ public class KnifeThrower extends Enemy {
 	}
 
 	@Override
-	public void hit() {
-		super.hit(); // Sottrae HP
+	public void hit(Player p) {
+		super.hit(p); // Sottrae HP
 		if (hp > 0) {
 			this.state = State.HURT;
 			// Piccola spinta all'indietro quando viene colpito
@@ -198,7 +198,7 @@ public class KnifeThrower extends Enemy {
 
 	@Override
 	public void flee() {
-		this.state=State.FLEEING;
+		this.state=State.RETREATING;
 		
 	}
 	

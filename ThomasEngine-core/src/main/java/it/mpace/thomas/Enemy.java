@@ -23,7 +23,7 @@ public abstract class Enemy {
         this.hurtbox = new Rectangle(x, y, 20, 65);
     }
 
-    public void hit() {
+    public void hit(Player p) {
     	 hp--;
          if (hp <= 0) {
              this.isDying = true;
@@ -47,7 +47,7 @@ public abstract class Enemy {
 
     // --- METODI POLIMORFICI ---
     
-    public abstract void update(float dt, Vector2 playerPos);
+    public abstract void update(float dt, Player player);
     
     // Nuovo metodo per gestire il disegno in modo centralizzato
     public abstract void draw(SpriteBatch batch);

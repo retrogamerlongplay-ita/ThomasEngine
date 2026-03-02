@@ -2,7 +2,6 @@ package it.mpace.thomas;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.math.Vector2;
 
 import it.mpace.thomas.res.GameControlRes;
 import it.mpace.thomas.res.GripperRes;
@@ -27,7 +26,7 @@ public class Gripper extends Enemy {
     }
 
     @Override
-    public void update(float deltaTime, Vector2 playerPosition) {
+    public void update(float deltaTime, Player player) {
     	// Se lo stato è DYING, esegui solo la fisica di caduta e ESCI
         if (state == GripperState.DYING||this.isDying) {
             updateDyingPhysics(deltaTime);
@@ -39,23 +38,32 @@ public class Gripper extends Enemy {
         if (state == GripperState.GRABBING) {
             // Posizionamento rigido su Thomas
             if (isGrabbedFromRight) {
-                position.x = playerPosition.x + 15;
+                position.x = player.position.x + 15;
                 facingRight = false;
             } else {
-                position.x = playerPosition.x - 10;
+                position.x = player.position.x - 10;
                 facingRight = true;
             }
-            position.y = playerPosition.y;
-        } else {
+            position.y = player.position.y;
+        } else if (state == GripperState.FLEEING) {
+            // Scappa nella direzione opposta a Thomas o semplicemente verso l'uscita più vicina
+            float fleeDir = (position.x > player.position.x) ? 1 : -1;
+            facingRight = (fleeDir > 0);
+            position.x += (speed * 1.5f) * fleeDir * deltaTime; // Scappa più veloce del normale!
+            
+            // Se esce dallo schermo, disattivalo
+            if (Math.abs(position.x - player.position.x) > 300) active = false;
+            return; // Interrompe il resto della logica di inseguimento
+        }else {
             // IA di movimento
-            float playerDistance = Math.abs(position.x - playerPosition.x);
+            float playerDistance = Math.abs(position.x - player.position.x);
             if (playerDistance < APPROACH_DISTANCE) {
                 state = GripperState.APPROACHING;
             } else {
                 state = GripperState.WALKING;
             }
 
-            if (position.x < playerPosition.x) {
+            if (position.x < player.position.x) {
                 position.x += speed * deltaTime;
                 facingRight = true;
             } else {
@@ -70,8 +78,8 @@ public class Gripper extends Enemy {
     }
 
     @Override
-    public void hit() {
-        super.hit(); // Imposta isDying = true e disabilita hurtbox
+    public void hit(Player p) {
+        super.hit(p); // Imposta isDying = true e disabilita hurtbox
         this.state = GripperState.DYING; // <--- Forza lo stato interno
         this.stateTime = 0; // Reset timer per l'animazione di morte
     }
