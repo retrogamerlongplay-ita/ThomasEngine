@@ -36,12 +36,17 @@ public class Player {
 	public Rectangle hitbox;
 	Rectangle hurtbox;
 	private float hurtTimer = 0;
+	private LevelScreen screen = null;
+	
+	// Nella classe Player
+	public boolean autoWalking = false;
 
-	public Player(float x, float y) {
+	public Player(float x, float y, LevelScreen s) {
 		position = new Vector2(x, y);
 		hitbox = new Rectangle(0, 0, 0, 0); // Inizialmente vuota
 		hurtbox = new Rectangle(0, 0, 32, 70); // Dimensioni Thomas
 		stateTime = 0f;
+		this.screen=s;
 	}
 
 	public void takeHit(float damage) {
@@ -90,6 +95,17 @@ public class Player {
 			// Mentre è stordito, non processiamo l'input di attacco/movimento
 			return;
 		}
+		
+		if (autoWalking) {
+		    currentState = State.WALKING;
+		    position.x -= speed * 0.5f * deltaTime; // Cammina lentamente verso sinistra
+		    stateTime += deltaTime;
+		    // Se raggiunge il punto esatto delle scale, iniziamo a farlo salire (Y)
+		    if (position.x <= LevelConstants.FIRST_FLOOR_LEFT) {
+		        position.y += speed * 0.4f * deltaTime; // Sale le scale
+		    }
+		    return; // Ignora l'input dell'utente durante l'autoWalking
+		}
 
 		// --- FISICA DI CADUTA SEMPRE ATTIVA (anche se GRABBED o DEAD) ---
 		if ((position.y > 510 || velocityY > 0) && currentState != State.DEAD) {
@@ -111,12 +127,20 @@ public class Player {
 			position.x = LevelConstants.FIRST_FLOOR_RIGHT;
 		}
 
-		if (position.x < LevelConstants.FIRST_FLOOR_LEFT_STAIR) {
-			position.x = LevelConstants.FIRST_FLOOR_LEFT_STAIR;
+		if (this.screen.getBoss().isActive()) {
+		    // Se il boss è vivo, Thomas non passa
+		    if (this.position.x < this.screen.getBoss().position.x + 10) {
+		        this.position.x = this.screen.getBoss().position.x + 10;
+		    }
+		} else {
+		    // Se il boss è morto, Thomas può raggiungere le scale (es. x = 30)
+		    if (this.position.x < LevelConstants.FIRST_FLOOR_LEFT) {
+		        this.screen.startLevelTransition(deltaTime);
+		    }
 		}
 
 		if (currentState == State.DEAD) {
-			stateTime += deltaTime;
+			//stateTime += deltaTime;
 			// Sposta Thomas all'indietro rispetto a dove guarda
 			float direction = facingRight ? -1 : 1;
 			position.x += direction * 50f * deltaTime;
@@ -292,6 +316,8 @@ public class Player {
 			currentState = State.IDLE;
 		}
 	}
+	
+	
 
 	public void draw(SpriteBatch batch) {
 		TextureRegion keyFrame;

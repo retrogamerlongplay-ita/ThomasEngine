@@ -15,7 +15,7 @@ public class ThomasMain extends Game {
 		GripperRes.load();
 		KnifeThrowerRes.load();
 		StickFighterRes.load();
-		setScreen(new LevelScreen());
+		setScreen(new Level1Screen());
 		
 	}
 }

@@ -11,11 +11,11 @@ public class GameControlRes {
 	public static int hiScore = 1000;
 	public static float gameTime = MAX_TIME;
 	public static final float TIME_SPEED = 10f; // Quanto velocemente cala (es. 50 unità al secondo)
-	public static final float PLAYER_SPEED=50f;
-	public static final float GRIPPER_SPEED=40f;
-	public static final float KNIFE_THROWER_SPEED=40f;
-	public static final float STICK_FIGHTER_SPEED=50f;
-	public static final float KNIFE_SPEED=60f;
+	public static final float PLAYER_SPEED=40f;
+	public static final float GRIPPER_SPEED=30f;
+	public static final float KNIFE_THROWER_SPEED=30f;
+	public static final float STICK_FIGHTER_SPEED=40f;
+	public static final float KNIFE_SPEED=45f;
 	public static final float KNIFE_INTERVAL=5f;
 	
 	public static boolean debugMode=true;

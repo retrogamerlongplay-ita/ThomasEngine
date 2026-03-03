@@ -2,7 +2,7 @@ package it.mpace.thomas;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
 
 import it.mpace.thomas.res.GameControlRes;
@@ -10,11 +10,11 @@ import it.mpace.thomas.res.KnifeThrowerRes;
 
 public class KnifeThrower extends Enemy {
 
-	public enum State {
-		WALKING, ATTACKING, RETREATING, HURT, FLEEING
-	}
+//	public enum State {
+//		WALKING, ATTACKING, RETREATING, HURT, FLEEING
+//	}
 
-	public State state = State.WALKING;
+	public EnemyState state = EnemyState.WALKING;
 
 	private float throwTimer = 0;
 	private int knivesThrown = 0;
@@ -48,9 +48,9 @@ public class KnifeThrower extends Enemy {
 		float distance = Math.abs(position.x - player.position.x);
 		
 		 // Gestione stordimento ultra-rapido
-        if (state == State.HURT) {
+        if (state == EnemyState.HURT) {
             if (stateTime >= HURT_DURATION) {
-                state = State.RETREATING; // Passa subito alla fuga
+                state = EnemyState.RETREATING; // Passa subito alla fuga
                 stateTime = 0;
             }
             // Aggiorna comunque la hurtbox nel caso Thomas tiri un secondo colpo rapido
@@ -61,7 +61,7 @@ public class KnifeThrower extends Enemy {
 		switch (state) {
 		case WALKING:
 			if (distance <= STOP_DISTANCE) {
-				state = State.ATTACKING;
+				state = EnemyState.ATTACKING;
 				throwTimer = 0;
 				knivesThrown = 0;
 			} else {
@@ -98,7 +98,7 @@ public class KnifeThrower extends Enemy {
 			}
 
 			if (knivesThrown >= 2 && throwTimer > 1.8f) {
-				state = State.RETREATING;
+				state = EnemyState.RETREATING;
 				stateTime = 0;
 			}
 			break;
@@ -118,7 +118,7 @@ public class KnifeThrower extends Enemy {
 
 					if (retreatCount < MAX_RETREATS) {
 						// TORNA ALL'ATTACCO
-						state = State.WALKING;
+						state = EnemyState.WALKING;
 						knivesThrown = 0;
 						throwTimer = 0;
 						stateTime = 0;
@@ -159,7 +159,7 @@ public class KnifeThrower extends Enemy {
 	public void hit(Player p) {
 		super.hit(p); // Sottrae HP
 		if (hp > 0) {
-			this.state = State.HURT;
+			this.state = EnemyState.HURT;
 			// Piccola spinta all'indietro quando viene colpito
 			position.x += (facingRight ? -15 : 15);
 		}
@@ -171,7 +171,7 @@ public class KnifeThrower extends Enemy {
 
 		if (isDying) {
 			frame = KnifeThrowerRes.dieAnim.getKeyFrame(stateTime);
-		} else if (state == State.HURT) {
+		} else if (state == EnemyState.HURT) {
 			// Usa i frame hurt che hai già caricato in KnifeThrowerRes
 			frame = KnifeThrowerRes.hurtHigh;
 		} else {
@@ -198,8 +198,24 @@ public class KnifeThrower extends Enemy {
 
 	@Override
 	public void flee() {
-		this.state=State.RETREATING;
+		this.state=EnemyState.RETREATING;
 		
+	}
+	
+	
+	
+	public EnemyState getState() {
+		return state;
+	}
+
+	public void setState(EnemyState state) {
+		this.state = state;
+	}
+
+	@Override
+	public Rectangle getHitBox() {
+		// TODO Auto-generated method stub
+		return new Rectangle(0,0,0,0);
 	}
 	
 	

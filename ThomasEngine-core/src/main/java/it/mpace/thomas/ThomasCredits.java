@@ -63,14 +63,16 @@ package it.mpace.thomas;
  * 
  *  @version 0.0.17
  * <ol>
- * <li>Boss1 upgraded IA</li>
- * <li>Boss1 hitbox implementation</li>
- * <li>Resolved bug in time death</li>
+ * <li>Player and enemy speed adjustment</li>
+ * <li>Boss1 death implementation</li>
+ * <li>Boss1 space limitation</li>
+ * <li>Abstract implementation of the class LevelScreen that is specialized in Level1Screen and Level2Screen</li>
+ * <li>Basic change of Level</li>
  * </ol>
  */
 
 public class ThomasCredits {
-	public static String VER = "0.0.16";
+	public static String VER = "0.0.17";
 	public static String AUTHOR= "Matteo Pace";
 	public static String GAME_ENGINE_TITLE = "THOMAS";
 	public static String TITLE="Kung Fu Master";
@@ -84,3 +86,18 @@ public class ThomasCredits {
 		
 	}
 }
+
+/***
+ * TODO:
+ * - Nella sequenza di fine stage implementare il salire del Player sugli scalini
+ * - Creare la sequenza di introduzione del livello (GET READY, camminata iniziale del Player)
+ * - Musica
+ * - Effetti sonori
+ * - Schermata iniziale
+ * - Schermata di Game Over
+ * - Schermata di Hi-Score
+ * - Sequenza introduttiva (il rapimento di Sylvia)
+ * - Miglioramento HUD nuovi font
+ * - Miglioramento HUD teste di Thomas come vite
+ * - Implementazione di frame di hit 
+*/

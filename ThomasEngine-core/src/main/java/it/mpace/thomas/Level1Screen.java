@@ -14,42 +14,32 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ScreenUtils;
 
+import it.mpace.thomas.Enemy.EnemyState;
 import it.mpace.thomas.Player.State;
 import it.mpace.thomas.res.GameControlRes;
 import it.mpace.thomas.res.GripperRes;
 import it.mpace.thomas.res.KnifeThrowerRes;
 import it.mpace.thomas.res.PlayerRes;
 
-public class LevelScreen implements Screen {
+public class Level1Screen extends LevelScreen implements Screen {
 	private Array<Enemy> minions; // Solo Gripper e KnifeThrower
 
-	private SpriteBatch batch;
-	private Texture background;
-	private OrthographicCamera camera;
-
-	private Player player;
-	private StickFighter boss;
-	private Array<Enemy> enemies = new Array<Enemy>();
 	private float spawnTimer;
 	private float deathTimer;
 	private float spawnInterval = 2.5f; // Un nemico ogni 2.5 secondi
 
-	private ShapeRenderer shapeRenderer;
+
 	public static boolean debugMode = true; // Flag per attivare/disattivare il debug
 
-	private OrthographicCamera hudCamera;
 
-	// Aggiungi come variabile di istanza
-	private BitmapFont font;
-
-	private Array<Knife> knives = new Array<>();
-
-	private Texture whitePixel = null;
 
 	private int knifeThrowersSpawned = 0;
 	private final int MAX_KNIFE_THROWERS_LEVEL_1 = 2;
+	
 
-	public LevelScreen() {
+
+
+	public Level1Screen() {
 		// Inizializzazione entità
 		minions = new Array<>();
 		// ... setup camera e batch ...
@@ -59,7 +49,7 @@ public class LevelScreen implements Screen {
 		camera.setToOrtho(false, 256, 256);
 		camera.position.x = LevelConstants.FIRST_FLOOR_RIGHT_START;
 		camera.position.y = LevelConstants.FIRST_FLOOR_Y;
-		player = new Player(LevelConstants.FIRST_FLOOR_RIGHT_START, LevelConstants.FIRST_FLOOR_GROUND_Y);
+		player = new Player(LevelConstants.FIRST_FLOOR_RIGHT_START, LevelConstants.FIRST_FLOOR_GROUND_Y, this);
 		boss = new StickFighter(LevelConstants.FIRST_FLOOR_LEFT_STAIR, LevelConstants.FIRST_FLOOR_GROUND_Y);
 		// camera.update();
 		shapeRenderer = new ShapeRenderer();
@@ -76,14 +66,13 @@ public class LevelScreen implements Screen {
 		whitePixel = new Texture(pixmap);
 		pixmap.dispose();
 	}
-
-	@Override
-	public void render(float delta) {
-		update(delta);
-		draw();
+	
+	public Enemy getBoss() {
+		return this.boss;
 	}
 
-	private void update(float dt) {
+	
+	public void update(float dt) {
 		// 1. GESTIONE TEMPO DI GIOCO
 		GameControlRes.gameTime -= GameControlRes.TIME_SPEED * dt;
 		if (GameControlRes.gameTime <= 0) {
@@ -100,7 +89,7 @@ public class LevelScreen implements Screen {
 		// muoiono)
 		if (player.checkAndResetLiberation()) {
 			for (Enemy e : enemies) {
-				if (e instanceof Gripper && ((Gripper) e).state == Gripper.GripperState.GRABBING) {
+				if (e instanceof Gripper && ((Gripper) e).state == EnemyState.GRABBING) {
 					Gripper g = (Gripper) e;
 					g.hit(player); // Il nemico muore e vola via
 					// Opzionale: aggiungi punti extra per la liberazione
@@ -112,8 +101,8 @@ public class LevelScreen implements Screen {
 			camera.position.y += 2; // Un piccolo sussulto della camera
 		}
 
-		boolean isBossActive = (boss.getState() != StickFighter.State.WAITING
-				&& boss.getState() != StickFighter.State.DEAD);
+		boolean isBossActive = (boss.getState() != EnemyState.WAITING
+				&& boss.getState() != EnemyState.DEAD);
 
 		// 4. LOGICA NEMICI (Loop a ritroso per sicurezza)
 		for (int i = enemies.size - 1; i >= 0; i--) {
@@ -148,8 +137,8 @@ public class LevelScreen implements Screen {
 				Gripper g = (Gripper) e;
 
 				// FIX: Se Thomas muore, il Gripper deve mollarlo subito!
-				if (player.currentState == State.DEAD && g.state == Gripper.GripperState.GRABBING) {
-					g.state = Gripper.GripperState.WALKING; // O FLEEING se preferisci
+				if (player.currentState == State.DEAD && g.state == EnemyState.GRABBING) {
+					g.state = EnemyState.WALKING; // O FLEEING se preferisci
 					// Opzionale: dai una piccola spinta all'indietro al nemico per "distacco"
 					g.position.x += (g.position.x > player.position.x) ? 10 : -10;
 				} else if (!e.isDying && player.currentState != State.GRABBED && player.currentState != State.PUNCHING
@@ -157,11 +146,11 @@ public class LevelScreen implements Screen {
 					float distanceX = Math.abs(player.position.x - e.position.x);
 					if (distanceX < 12f) { // Distanza per l'abbraccio
 						player.currentState = State.GRABBED;
-						((Gripper) e).state = Gripper.GripperState.GRABBING;
+						((Gripper) e).state = EnemyState.GRABBING;
 						((Gripper) e).isGrabbedFromRight = (e.position.x > player.position.x);
 					}
 				} else if (player.currentState == State.GRABBED && e instanceof Gripper
-						&& ((Gripper) e).state == Gripper.GripperState.GRABBING) {
+						&& ((Gripper) e).state == EnemyState.GRABBING) {
 					GameControlRes.decrementEnergy(15f * dt);
 				}
 			}
@@ -201,18 +190,18 @@ public class LevelScreen implements Screen {
 		}
 
 		// Logica specifica: se il boss attacca, i minions scappano
-		boolean bossActive = (boss.getState() == StickFighter.State.WALKING);
+		boolean bossActive = (boss.getState() == EnemyState.WALKING);
 
-		if (boss.getState() == StickFighter.State.ATTACKING_HIGH||boss.getState() == StickFighter.State.ATTACKING_LOW||boss.getState() == StickFighter.State.ATTACKING_MID) {
+		if (boss.getState() == EnemyState.ATTACKING_HIGH||boss.getState() == EnemyState.ATTACKING_LOW||boss.getState() == EnemyState.ATTACKING_MID) {
 			// Se la hitbox del bastone tocca Thomas e lui non è già morto o appena colpito
-			if (boss.stickHitbox.overlaps(player.hurtbox) && player.currentState != Player.State.DEAD) {
+			if (boss.getHitBox().overlaps(player.hurtbox) && player.currentState != Player.State.DEAD) {
 				player.takeHit(15f); // Danno consistente dal boss
 				// Opzionale: aggiungi un piccolo rinculo a Thomas
 				player.position.x += (boss.position.x > player.position.x) ? -10 : 10;
 			}
 		}
 		
-		if (boss.getState() != StickFighter.State.DEAD && !boss.isDying) {
+		if (boss.getState() != EnemyState.DEAD && !boss.isDying) {
 		    // Se Thomas prova ad andare a SINISTRA del Boss (verso le scale)
 		    if (player.position.x < boss.position.x + 3) { 
 		        player.position.x = boss.position.x + 3;
@@ -224,8 +213,8 @@ public class LevelScreen implements Screen {
 		    if (player.hitbox.overlaps(boss.hurtbox)) {
 		        // Applichiamo il danno solo se il boss non è già in animazione di "Hurt" 
 		        // per evitare che un singolo pugno tolga 10 HP in un colpo solo
-		        if (boss.getState() != StickFighter.State.HURT_HIGH && 
-		            boss.getState() != StickFighter.State.HURT_LOW) {
+		        if (boss.getState() != EnemyState.HURT_HIGH && 
+		            boss.getState() != EnemyState.HURT_LOW) {
 		            
 		            boss.hit(player);
 		            GameControlRes.incrementScore(200); // Punti per aver colpito il boss
@@ -245,8 +234,17 @@ public class LevelScreen implements Screen {
 			if (!m.isActive())
 				minions.removeIndex(i);
 		}
+		
+		if (boss.isActive()) {
+		    boss.update(dt, player);
+		}
+		
+		if (!boss.isActive() && boss.getState() == EnemyState.DEAD) {
+		    // Il Boss è sparito: le scale sono ora accessibili
+		    this.startLevelTransition(dt);
+		}
 
-		boss.update(dt, player);
+		//boss.update(dt, player);
 		// 6. CAMERA E SPAWN
 		updateCamera();
 		handleSpawning(dt);
@@ -309,8 +307,10 @@ public class LevelScreen implements Screen {
 	}
 
 	private void handleSpawning(float dt) {
+		// 1. Limite massimo di nemici a schermo
+	    if (enemies.size >= 5) return; 
 		spawnTimer += dt;
-		if (boss.getState() != StickFighter.State.WAITING)
+		if (boss.getState() != EnemyState.WAITING)
 			return;
 
 		if (spawnTimer >= spawnInterval) {
@@ -352,9 +352,9 @@ public class LevelScreen implements Screen {
 		}
 	}
 
-	private void draw() {
+	public void draw(float delta) {
 		// Disegna sfondo, Thomas, Minions e infine il Boss
-		float dt = Math.min(Gdx.graphics.getDeltaTime(), 1 / 60f);
+		float dt = Math.min(delta,1 / 60f); // Math.min(Gdx.graphics.getDeltaTime(), 1 / 60f);
 
 		// LOGICA DI STATO
 		if (GameControlRes.lives <= 0) {
@@ -408,8 +408,20 @@ public class LevelScreen implements Screen {
 			font.draw(batch, "PRESS START (ENTER) TO RESTART", camera.position.x - 70, camera.position.y + 30);
 		}
 		batch.end();
+		
+		if (isLevelComplete) {
+		    batch.begin();
+		    batch.setProjectionMatrix(hudCamera.combined);
+		    // Calcola l'opacità in base al timer (da 0 a 1 in 2 secondi)
+		    float alpha = Math.min(transitionTimer / 2f, 1f);
+		    batch.setColor(0, 0, 0, alpha); // Nero con trasparenza variabile
+		    batch.draw(whitePixel, 0, 0, 256, 256);
+		    batch.setColor(Color.WHITE);
+		    batch.end();
+		}
+		
 	}
-
+ 
 	@Override
 	public void dispose() {
 		batch.dispose();
@@ -420,74 +432,46 @@ public class LevelScreen implements Screen {
 		PlayerRes.dispose();
 	}
 
-	private void drawEnergyBars() {
-		// Barra Thomas (Gialla/Rossa)
-		batch.setColor(Color.RED);
-		float playerEnergyWidth = (GameControlRes.energy / 100f) * 60; // Max 60px
-		batch.draw(whitePixel, 10, 35, playerEnergyWidth, 8);
+	public void startLevelTransition(float dt) {
+	    // Se il boss è morto e Thomas raggiunge il bordo sinistro
+	    if (!boss.isActive() && player.position.x <= LevelConstants.FIRST_FLOOR_LEFT_STAIR + 10) {
+	        if (!isLevelComplete) {
+	            isLevelComplete = true;
+	            player.autoWalking = true; // Thomas prende il controllo automatico
+	            player.facingRight = false;
+	        }
+	    }
 
-		// Barra Nemico (Bianca - fissa o legata al Boss)
-		batch.setColor(Color.WHITE);
-		batch.draw(whitePixel, 160, 35, 60, 8);// TODO legata al boss
-		batch.setColor(Color.WHITE); // Reset finale
+	    if (isLevelComplete) {
+	        transitionTimer += dt;
+	        
+	        // Dopo 2 secondi di camminata/salita scale, cambiamo piano
+	        if (transitionTimer > 2.5f) {
+	            goToNextFloor();
+	        }
+	    }
 	}
-
-	private void drawDebugShapes() {
-		shapeRenderer.setProjectionMatrix(camera.combined);
-		shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-		// Player Hitbox (Rossa) e Hurtbox (Verde)
-		shapeRenderer.setColor(Color.RED);
-		shapeRenderer.rect(player.hitbox.x, player.hitbox.y, player.hitbox.width, player.hitbox.height);
-		shapeRenderer.setColor(Color.GREEN);
-		shapeRenderer.rect(player.hurtbox.x, player.hurtbox.y, player.hurtbox.width, player.hurtbox.height);
-		shapeRenderer.setColor(Color.RED);
-	    shapeRenderer.rect(boss.stickHitbox.x, boss.stickHitbox.y, boss.stickHitbox.width, boss.stickHitbox.height);
-
-		// Nemici (Gialla)
-		shapeRenderer.setColor(Color.YELLOW);
-		for (Enemy e : enemies) {
-			shapeRenderer.rect(e.hurtbox.x, e.hurtbox.y, e.hurtbox.width, e.hurtbox.height);
-		}
-		// AGGIUNGI QUESTA RIGA: Disegna esplicitamente quella del Boss
-		if (boss != null) {
-		    shapeRenderer.rect(boss.hurtbox.x, boss.hurtbox.y, boss.hurtbox.width, boss.hurtbox.height);
-		}
-
-		// Coltelli (Ciano)
-		shapeRenderer.setColor(Color.CYAN);
-		for (Knife k : knives) {
-			shapeRenderer.rect(k.hitbox.x, k.hitbox.y, k.hitbox.width, k.hitbox.height);
-		}
-		shapeRenderer.end();
+	
+	private void goToNextFloor() {
+	    // Reset dello stato player per il prossimo livello
+	    player.autoWalking = false;
+	    
+	    // Passaggio al secondo piano (Floor 2)
+	    // Assicurati che ThomasMain sia accessibile tramite Gdx.app.getApplicationListener()
+	    ThomasMain game = (ThomasMain) Gdx.app.getApplicationListener();
+	    game.setScreen(new Level2Screen()); // Dovrai creare questa classe
 	}
+	
+	
+	/*public void startLevelTransition() {
+	    // Opzionale: blocca l'input di Thomas e fallo camminare automaticamente verso le scale
+	    // player.currentState = State.WALKING;
+	    // player.autoWalkToStairs = true;
 
-	private void drawUI() {
-		// 1. FASCIA NERA SUPERIORE
-		// Disegniamo da y=200 a y=256 (altezza 56 pixel) su tutta la larghezza (256)
-		batch.setColor(Color.BLACK);
-		batch.draw(whitePixel, 0, 0, 256, 56);
-		batch.setColor(Color.WHITE); // Resetta il colore per i testi
-
-		// 2. TESTI (Ora saranno sempre su sfondo nero)
-		font.setColor(Color.RED); // Colore classico 1P/ENEMY
-		font.draw(batch, "PLAYER", 10, 54);
-		font.draw(batch, "ENEMY", 160, 54);
-		font.draw(batch, "LIVES", 110, 20);
-
-		font.setColor(Color.WHITE);
-		font.draw(batch, String.valueOf((int) GameControlRes.lives), 115, 10);
-		// Score Thomas
-		font.draw(batch, String.format("%06d", (int) GameControlRes.score), 45, 54);
-		// Score Massimo (High Score)
-		font.draw(batch, "HI-SCORE: " + String.format("%06d", (int) GameControlRes.hiScore), 80, 50);
-
-		// Timer al centro
-		font.setColor(Color.YELLOW);
-		font.draw(batch, "TIME: " + (int) GameControlRes.gameTime, 100, 30);
-
-		// 3. BARRE ENERGIA (Metodo semplice a caratteri o rettangoli)
-		drawEnergyBars();
-	}
+	    // Esegui il passaggio al secondo piano (Floor 2)
+	    // Passiamo l'istanza del gioco per poter chiamare setScreen
+	    ((ThomasMain) Gdx.app.getApplicationListener()).setScreen(new Level2Screen()); 
+	}*/
 
 	@Override
 	public void show() {
