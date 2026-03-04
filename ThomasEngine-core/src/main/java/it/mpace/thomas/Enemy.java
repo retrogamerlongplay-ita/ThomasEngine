@@ -5,6 +5,8 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 
+import it.mpace.thomas.res.AudioRes;
+
 public abstract class Enemy {
 	public Vector2 position;
 	public float speed; // <--- Definita qui per tutti
@@ -29,6 +31,7 @@ public abstract class Enemy {
 	}
 
 	public void hit(Player p) {
+		AudioRes.playerHurt.play();
 		hp--;
 		if (hp <= 0) {
 			this.isDying = true;

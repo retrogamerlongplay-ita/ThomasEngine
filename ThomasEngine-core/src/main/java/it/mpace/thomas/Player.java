@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 
+import it.mpace.thomas.res.AudioRes;
 import it.mpace.thomas.res.GameControlRes;
 import it.mpace.thomas.res.PlayerRes;
 
@@ -14,7 +15,7 @@ public class Player {
 	// Stati del giocatore
 	public enum State {
 		IDLE, WALKING, PUNCHING, KICKING, CROUCHING, JUMPING, GRABBED, DEAD, PUNCHING_CROUCH, KICKING_CROUCH,
-		KICKING_JUMP
+		KICKING_JUMP, CLIMBING_STAIRS
 	}
 
 	private final float HURT_DURATION = 0.1f; // Durata del "dolore"
@@ -37,7 +38,7 @@ public class Player {
 	Rectangle hurtbox;
 	private float hurtTimer = 0;
 	private LevelScreen screen = null;
-	
+
 	// Nella classe Player
 	public boolean autoWalking = false;
 
@@ -46,7 +47,7 @@ public class Player {
 		hitbox = new Rectangle(0, 0, 0, 0); // Inizialmente vuota
 		hurtbox = new Rectangle(0, 0, 32, 70); // Dimensioni Thomas
 		stateTime = 0f;
-		this.screen=s;
+		this.screen = s;
 	}
 
 	public void takeHit(float damage) {
@@ -57,10 +58,12 @@ public class Player {
 		this.currentState = State.GRABBED; // Usiamo l'animazione hurt
 		this.stateTime = 0;
 		this.hurtTimer = HURT_DURATION;
+		AudioRes.playerHurt.play();
 	}
 
 	public void triggerDeath() {
 		this.currentState = State.DEAD;
+		AudioRes.dieSound.play();
 		this.stateTime = 0;
 		this.velocityY = 250f; // Spinta verso l'alto
 		this.hitbox.set(0, 0, 0, 0); // Disabilita attacchi
@@ -95,16 +98,23 @@ public class Player {
 			// Mentre è stordito, non processiamo l'input di attacco/movimento
 			return;
 		}
-		
+
 		if (autoWalking) {
-		    currentState = State.WALKING;
-		    position.x -= speed * 0.5f * deltaTime; // Cammina lentamente verso sinistra
-		    stateTime += deltaTime;
-		    // Se raggiunge il punto esatto delle scale, iniziamo a farlo salire (Y)
-		    if (position.x <= LevelConstants.FIRST_FLOOR_LEFT) {
-		        position.y += speed * 0.4f * deltaTime; // Sale le scale
+			 // 1. Fase di avvicinamento alle scale (Cammina a sinistra)
+		    if (position.x > LevelConstants.FIRST_FLOOR_LEFT_STAIR) {
+		        currentState = State.WALKING;
+		        facingRight = false;
+		        position.x -= speed * 0.5f * deltaTime;
+		    } 
+		    // 2. Fase di salita (Cambia animazione e sale in diagonale)
+		    else {
+		        currentState = State.CLIMBING_STAIRS; // Attiva l'animazione corretta
+		        position.x -= speed * 0.3f * deltaTime; // Più lento mentre sale
+		        position.y += speed * 0.4f * deltaTime; // Sale la Y
 		    }
-		    return; // Ignora l'input dell'utente durante l'autoWalking
+		    
+		    stateTime += deltaTime;
+		    return; // Salta la gravità e l'input
 		}
 
 		// --- FISICA DI CADUTA SEMPRE ATTIVA (anche se GRABBED o DEAD) ---
@@ -128,19 +138,19 @@ public class Player {
 		}
 
 		if (this.screen.getBoss().isActive()) {
-		    // Se il boss è vivo, Thomas non passa
-		    if (this.position.x < this.screen.getBoss().position.x + 10) {
-		        this.position.x = this.screen.getBoss().position.x + 10;
-		    }
+			// Se il boss è vivo, Thomas non passa
+			if (this.position.x < this.screen.getBoss().position.x + 10) {
+				this.position.x = this.screen.getBoss().position.x + 10;
+			}
 		} else {
-		    // Se il boss è morto, Thomas può raggiungere le scale (es. x = 30)
-		    if (this.position.x < LevelConstants.FIRST_FLOOR_LEFT) {
-		        this.screen.startLevelTransition(deltaTime);
-		    }
+			// Se il boss è morto, Thomas può raggiungere le scale (es. x = 30)
+			if (this.position.x < LevelConstants.FIRST_FLOOR_LEFT) {
+				this.screen.startLevelTransition(deltaTime);
+			}
 		}
 
 		if (currentState == State.DEAD) {
-			//stateTime += deltaTime;
+			// stateTime += deltaTime;
 			// Sposta Thomas all'indietro rispetto a dove guarda
 			float direction = facingRight ? -1 : 1;
 			position.x += direction * 50f * deltaTime;
@@ -248,11 +258,13 @@ public class Player {
 			// Se premo Z mentre sono giù -> Pugno Basso
 			if (Gdx.input.isKeyJustPressed(Input.Keys.Z)) {
 				currentState = State.PUNCHING_CROUCH;
+				AudioRes.punchSound.play();
 				stateTime = 0;
 			}
 			// Se premo X mentre sono giù -> Calcio Basso
 			else if (Gdx.input.isKeyJustPressed(Input.Keys.X)) {
 				currentState = State.KICKING_CROUCH;
+				AudioRes.kickSound.play();
 				stateTime = 0;
 			}
 			// Altrimenti resta semplicemente abbassato
@@ -271,11 +283,13 @@ public class Player {
 		// 2. INPUT ATTACCO (Trigger)
 		if (Gdx.input.isKeyJustPressed(Input.Keys.Z)) {
 			currentState = State.PUNCHING;
+			AudioRes.punchSound.play();
 			stateTime = 0;
 			return; // Esci per evitare che il movimento sovrascriva lo stato
 		}
 		if (Gdx.input.isKeyJustPressed(Input.Keys.X)) {
 			currentState = State.KICKING;
+			AudioRes.kickSound.play();
 			stateTime = 0;
 			return;
 		}
@@ -317,7 +331,31 @@ public class Player {
 		}
 	}
 	
-	
+	public void updateAnimationOnly(float deltaTime) {
+		 // 1. Fai avanzare il tempo dell'animazione corrente
+	    stateTime += deltaTime;
+
+	    // 2. Mantieni aggiornata la Hurtbox (fondamentale per il debug visivo e coerenza)
+	    float bodyWidth = 20; 
+	    float currentHurtboxHeight = (currentState == State.CROUCHING) ? 40 : 65;
+	    hurtbox.set(position.x - (bodyWidth / 2), position.y, bodyWidth, currentHurtboxHeight);
+
+	    // 3. Applica la gravità se Thomas non è a terra (es. se l'intro prevede un salto)
+	    if (position.y > 510 || velocityY > 0) {
+	        position.y += velocityY * deltaTime;
+	        velocityY -= GRAVITY * deltaTime;
+
+	        if (position.y <= 510) {
+	            position.y = 510;
+	            velocityY = 0;
+	            if (currentState == State.JUMPING) currentState = State.IDLE;
+	        }
+	    }
+
+	    // 4. Reset della Hitbox di attacco 
+	    // Durante l'intro Thomas non deve poter colpire nulla accidentalmente
+	    hitbox.set(0, 0, 0, 0);
+	}
 
 	public void draw(SpriteBatch batch) {
 		TextureRegion keyFrame;
@@ -351,6 +389,9 @@ public class Player {
 		case KICKING_CROUCH:
 			keyFrame = PlayerRes.kickCrouchAnim.getKeyFrame(stateTime);
 			break;
+		case CLIMBING_STAIRS:
+			keyFrame = PlayerRes.climbAnim.getKeyFrame(stateTime, true);
+	        break;
 		default:
 			keyFrame = PlayerRes.idleFrame;
 			break;

@@ -10,10 +10,6 @@ import it.mpace.thomas.res.KnifeThrowerRes;
 
 public class KnifeThrower extends Enemy {
 
-//	public enum State {
-//		WALKING, ATTACKING, RETREATING, HURT, FLEEING
-//	}
-
 	public EnemyState state = EnemyState.WALKING;
 
 	private float throwTimer = 0;

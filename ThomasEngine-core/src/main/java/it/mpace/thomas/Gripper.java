@@ -9,15 +9,10 @@ import it.mpace.thomas.res.GripperRes;
 
 public class Gripper extends Enemy {
 
-    // RIMOSSE: position, hurtbox, active, facingRight, stateTime, velocityY
-    // perché sono già in Enemy!
 
     public boolean isGrabbedFromRight;
     private final float APPROACH_DISTANCE = 100;
 
-//    public enum GripperState {
-//        WALKING, APPROACHING, GRABBING, DYING, FLEEING
-//    }
 
     public EnemyState state = EnemyState.WALKING;
 

@@ -16,6 +16,7 @@ import com.badlogic.gdx.utils.ScreenUtils;
 
 import it.mpace.thomas.Enemy.EnemyState;
 import it.mpace.thomas.Player.State;
+import it.mpace.thomas.res.AudioRes;
 import it.mpace.thomas.res.GameControlRes;
 import it.mpace.thomas.res.GripperRes;
 import it.mpace.thomas.res.KnifeThrowerRes;
@@ -73,6 +74,30 @@ public class Level1Screen extends LevelScreen implements Screen {
 
 	
 	public void update(float dt) {
+		if (introActive) {
+			updateCamera();
+	        introTimer += dt;
+	       
+	        
+	        // FASE 1: Thomas cammina da solo verso destra (entrata in scena)
+	        if (player.position.x > LevelConstants.FIRST_FLOOR_RIGHT_START) {
+	            player.currentState = Player.State.WALKING;
+	            player.facingRight = false;
+	            player.position.x -= GameControlRes.PLAYER_SPEED * 0.8f * dt;
+	        } else {
+	            // FASE 2: Thomas si ferma, aspettiamo che il timer scada
+	            player.currentState = Player.State.IDLE;
+	            introTimer += dt;
+	            if (introTimer >= READY_DURATION) {
+	                introActive = false; // Restituiamo il controllo al giocatore
+	                AudioRes.bgm_get_ready.stop();
+	                AudioRes.bgm_main_theme.play();
+	            }
+	        }
+	        
+	        player.updateAnimationOnly(dt); // Un metodo che aggiorna solo i frame senza leggere l'input
+	        return; // Salta il resto dell'update (nemici, timer di gioco, ecc.)
+	    }
 		// 1. GESTIONE TEMPO DI GIOCO
 		GameControlRes.gameTime -= GameControlRes.TIME_SPEED * dt;
 		if (GameControlRes.gameTime <= 0) {
@@ -268,7 +293,9 @@ public class Level1Screen extends LevelScreen implements Screen {
 		camera.update();
 	}
 
-	private void handleGameOverInput() {
+	private void handleGameOver() {
+		AudioRes.bgm_main_theme.stop();
+		AudioRes.bgm_game_over.play();
 		if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
 			GameControlRes.fullReset(); // Metodo che azzera vite, score ed energia
 			knives.clear();
@@ -358,7 +385,7 @@ public class Level1Screen extends LevelScreen implements Screen {
 
 		// LOGICA DI STATO
 		if (GameControlRes.lives <= 0) {
-			handleGameOverInput();
+			handleGameOver();
 		} else if (player.currentState == State.DEAD) {
 			player.update(dt);
 			handleDeath(dt);
@@ -434,6 +461,8 @@ public class Level1Screen extends LevelScreen implements Screen {
 
 	public void startLevelTransition(float dt) {
 	    // Se il boss è morto e Thomas raggiunge il bordo sinistro
+		AudioRes.bgm_main_theme.stop();
+		AudioRes.bgm_level_completed.play();
 	    if (!boss.isActive() && player.position.x <= LevelConstants.FIRST_FLOOR_LEFT_STAIR + 10) {
 	        if (!isLevelComplete) {
 	            isLevelComplete = true;
@@ -441,15 +470,23 @@ public class Level1Screen extends LevelScreen implements Screen {
 	            player.facingRight = false;
 	        }
 	    }
-
-	    if (isLevelComplete) {
-	        transitionTimer += dt;
-	        
-	        // Dopo 2 secondi di camminata/salita scale, cambiamo piano
-	        if (transitionTimer > 2.5f) {
-	            goToNextFloor();
-	        }
+	    
+	 // Calcoliamo quanto Thomas è salito rispetto al punto di inizio scala
+	    float climbProgress = player.position.y - LevelConstants.FIRST_FLOOR_GROUND_Y;
+	    
+	    // Iniziamo il Fade Out solo dopo che è salito di almeno 30 pixel
+	    if (climbProgress > 30) {
+	        transitionTimer += dt; // Incrementiamo il timer per il fade
 	    }
+
+	    // Il cambio schermo avviene solo quando Thomas è "uscito" o il fade è totale
+	    if (climbProgress > 80 || transitionTimer > 2.5f) {
+	        // Logica di cambio piano (es. setScreen(new Level2Screen()))
+	        System.out.println("PIANO COMPLETATO!");
+	        goToNextFloor();
+	    }
+
+	    
 	}
 	
 	private void goToNextFloor() {
@@ -462,20 +499,11 @@ public class Level1Screen extends LevelScreen implements Screen {
 	    game.setScreen(new Level2Screen()); // Dovrai creare questa classe
 	}
 	
-	
-	/*public void startLevelTransition() {
-	    // Opzionale: blocca l'input di Thomas e fallo camminare automaticamente verso le scale
-	    // player.currentState = State.WALKING;
-	    // player.autoWalkToStairs = true;
-
-	    // Esegui il passaggio al secondo piano (Floor 2)
-	    // Passiamo l'istanza del gioco per poter chiamare setScreen
-	    ((ThomasMain) Gdx.app.getApplicationListener()).setScreen(new Level2Screen()); 
-	}*/
 
 	@Override
 	public void show() {
-		// TODO Auto-generated method stub
+		 player.position.x = 1775; //per la intro
+		 AudioRes.bgm_get_ready.play();
 
 	}
 

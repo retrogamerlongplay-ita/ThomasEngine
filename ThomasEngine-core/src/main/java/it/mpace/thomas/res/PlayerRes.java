@@ -17,6 +17,7 @@ public class PlayerRes {
     public static Animation<TextureRegion> jumpAnim;
     public static Animation<TextureRegion> punchCrouchAnim;
     public static Animation<TextureRegion> kickCrouchAnim;
+    public static Animation<TextureRegion> climbAnim;
     public static TextureRegion idleFrame;
     public static TextureRegion crouchFrame;
 
@@ -37,6 +38,7 @@ public class PlayerRes {
         jumpAnim = new Animation<>(0.1f, atlas.findRegions("thomas_jump"), Animation.PlayMode.NORMAL);
         punchCrouchAnim = new Animation<>(0.1f, atlas.findRegions("thomas_crouch_punch"), Animation.PlayMode.NORMAL);
         kickCrouchAnim = new Animation<>(0.1f, atlas.findRegions("thomas_crouch_kick"), Animation.PlayMode.NORMAL);
+        climbAnim= new Animation<>(0.25f, atlas.findRegions("thomas_stairs"), Animation.PlayMode.LOOP);
     }
 
     public static void dispose() {

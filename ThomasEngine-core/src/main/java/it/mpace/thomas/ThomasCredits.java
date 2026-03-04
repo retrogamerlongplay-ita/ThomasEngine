@@ -69,10 +69,26 @@ package it.mpace.thomas;
  * <li>Abstract implementation of the class LevelScreen that is specialized in Level1Screen and Level2Screen</li>
  * <li>Basic change of Level</li>
  * </ol>
+ * 
+ * 
+ * @version 0.0.18
+ * <ol>
+ * <li>Stairs climbing animation</li>
+ * <li>Music</li>
+ * <li>Sound FX</li>
+ * <li>Initial Main menu</li>
+ * </ol>
+ * 
+ * @version 0.0.19
+ * <ol>
+ * <li>Main menu optimization</li>
+ * <li>Capability to mute sound</li>
+ * <li></li>
+ * </ol>
  */
 
 public class ThomasCredits {
-	public static String VER = "0.0.17";
+	public static String VER = "0.0.19";
 	public static String AUTHOR= "Matteo Pace";
 	public static String GAME_ENGINE_TITLE = "THOMAS";
 	public static String TITLE="Kung Fu Master";
@@ -89,15 +105,13 @@ public class ThomasCredits {
 
 /***
  * TODO:
- * - Nella sequenza di fine stage implementare il salire del Player sugli scalini
- * - Creare la sequenza di introduzione del livello (GET READY, camminata iniziale del Player)
- * - Musica
- * - Effetti sonori
  * - Schermata iniziale
+ * - Mute Sound
  * - Schermata di Game Over
  * - Schermata di Hi-Score
  * - Sequenza introduttiva (il rapimento di Sylvia)
  * - Miglioramento HUD nuovi font
  * - Miglioramento HUD teste di Thomas come vite
- * - Implementazione di frame di hit 
+ * - Implementazione di frame di hit
+ * - Generare le immagini per ciascun livello 
 */
