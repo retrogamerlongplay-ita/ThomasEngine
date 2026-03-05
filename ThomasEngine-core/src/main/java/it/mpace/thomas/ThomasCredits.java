@@ -83,7 +83,10 @@ package it.mpace.thomas;
  * <ol>
  * <li>Main menu optimization</li>
  * <li>Capability to mute sound</li>
- * <li></li>
+ * <li>GemeInput implementation (a class to separate input management)</li>
+ * <li>Flying kick optimized</li>
+ * <li>Flying punch optimized</li>
+ * <li>Basic Game Over Screen</li>
  * </ol>
  */
 
@@ -105,8 +108,6 @@ public class ThomasCredits {
 
 /***
  * TODO:
- * - Schermata iniziale
- * - Mute Sound
  * - Schermata di Game Over
  * - Schermata di Hi-Score
  * - Sequenza introduttiva (il rapimento di Sylvia)

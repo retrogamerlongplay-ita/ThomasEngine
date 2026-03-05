@@ -15,7 +15,7 @@ public class Player {
 	// Stati del giocatore
 	public enum State {
 		IDLE, WALKING, PUNCHING, KICKING, CROUCHING, JUMPING, GRABBED, DEAD, PUNCHING_CROUCH, KICKING_CROUCH,
-		KICKING_JUMP, CLIMBING_STAIRS
+		KICKING_JUMP, PUNCHING_JUMP,  CLIMBING_STAIRS
 	}
 
 	private final float HURT_DURATION = 0.1f; // Durata del "dolore"
@@ -58,12 +58,13 @@ public class Player {
 		this.currentState = State.GRABBED; // Usiamo l'animazione hurt
 		this.stateTime = 0;
 		this.hurtTimer = HURT_DURATION;
-		AudioRes.playerHurt.play();
+		AudioRes.playSound(AudioRes.playerHurt);
+
 	}
 
 	public void triggerDeath() {
 		this.currentState = State.DEAD;
-		AudioRes.dieSound.play();
+		AudioRes.playSound(AudioRes.dieSound);
 		this.stateTime = 0;
 		this.velocityY = 250f; // Spinta verso l'alto
 		this.hitbox.set(0, 0, 0, 0); // Disabilita attacchi
@@ -84,47 +85,273 @@ public class Player {
 
 	public void update(float deltaTime) {
 		stateTime += deltaTime;
-		float bodyWidth = 20; // Imposta la larghezza reale del torso di Thomas ritagliato
+		float bodyWidth = 20;
 
-		// Gestione altezza Hurtbox dinamica
+		// 1. GESTIONE HURTBOX DINAMICA
 		float currentHurtboxHeight = (currentState == State.CROUCHING) ? 40 : 65;
 		hurtbox.set(position.x - (bodyWidth / 2), position.y, bodyWidth, currentHurtboxHeight);
 
+		// 2. GESTIONE STORDIMENTO (HURT)
 		if (hurtTimer > 0) {
 			hurtTimer -= deltaTime;
 			if (hurtTimer <= 0 && currentState == State.GRABBED) {
-				currentState = State.IDLE; // Torna subito attivo
+				currentState = State.IDLE;
 			}
-			// Mentre è stordito, non processiamo l'input di attacco/movimento
 			return;
 		}
 
+		// 3. AUTO-WALKING (TRANSIZIONI LIVELLO)
 		if (autoWalking) {
-			 // 1. Fase di avvicinamento alle scale (Cammina a sinistra)
-		    if (position.x > LevelConstants.FIRST_FLOOR_LEFT_STAIR) {
-		        currentState = State.WALKING;
-		        facingRight = false;
-		        position.x -= speed * 0.5f * deltaTime;
-		    } 
-		    // 2. Fase di salita (Cambia animazione e sale in diagonale)
-		    else {
-		        currentState = State.CLIMBING_STAIRS; // Attiva l'animazione corretta
-		        position.x -= speed * 0.3f * deltaTime; // Più lento mentre sale
-		        position.y += speed * 0.4f * deltaTime; // Sale la Y
-		    }
-		    
-		    stateTime += deltaTime;
-		    return; // Salta la gravità e l'input
+			if (position.x > LevelConstants.FIRST_FLOOR_LEFT_STAIR) {
+				currentState = State.WALKING;
+				facingRight = false;
+				position.x -= speed * 0.5f * deltaTime;
+			} else {
+				currentState = State.CLIMBING_STAIRS;
+				position.x -= speed * 0.3f * deltaTime;
+				position.y += speed * 0.4f * deltaTime;
+			}
+			return;
 		}
 
-		// --- FISICA DI CADUTA SEMPRE ATTIVA (anche se GRABBED o DEAD) ---
+		// 4. FISICA DI CADUTA E GRAVITÀ
 		if ((position.y > 510 || velocityY > 0) && currentState != State.DEAD) {
 			position.y += velocityY * deltaTime;
 			velocityY -= GRAVITY * deltaTime;
+		}
 
-			// Atterraggio (solo se non siamo nello stato DEAD, dove Thomas deve "bucare" il
-			// suolo)
-			if (position.y <= 510 && currentState != State.DEAD) {
+		// 5. LOGICA SPECIFICA CALCIO VOLANTE (DIAGONALE E STATICO)
+		if (currentState == State.KICKING_JUMP) {
+			// Permette il movimento orizzontale in aria durante il calcio
+			if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
+				position.x -= speed * deltaTime;
+				facingRight = false;
+			} else if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
+				position.x += speed * deltaTime;
+				facingRight = true;
+			}
+
+			// Hitbox persistente del calcio volante
+			float hw = 22;
+			hitbox.set(facingRight ? position.x : position.x - hw, position.y + 35, hw, 10);
+
+			// Atterraggio
+			if (position.y <= 510) {
+				position.y = 510;
+				velocityY = 0;
+				currentState = State.IDLE;
+				hitbox.set(0, 0, 0, 0);
+			}
+			return; // BLOCCA il resto dell'update (evita walking anim in aria)
+		}
+		
+		if (currentState == State.PUNCHING_JUMP) {
+		    // Movimento diagonale
+		    if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) { position.x -= speed * deltaTime; facingRight = false; }
+		    if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) { position.x += speed * deltaTime; facingRight = true; }
+
+		    // Hitbox del pugno volante (leggermente più corta del calcio)
+		    float hw = 18;
+		    hitbox.set(facingRight ? position.x : position.x - hw, position.y + 40, hw, 8);
+
+		    // Atterraggio
+		    if (position.y <= 510) {
+		        position.y = 510; velocityY = 0;
+		        currentState = State.IDLE;
+		        hitbox.set(0, 0, 0, 0);
+		    }
+		    return; // Protegge lo stato
+		}
+
+		// 6. MOVIMENTO ORIZZONTALE TERRA/ARIA (Solo se non attacca o è accovacciato)
+		if (!isAttacking() && currentState != State.DEAD && currentState != State.GRABBED
+				&& currentState != State.CROUCHING) {
+			if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
+				position.x -= speed * deltaTime;
+				facingRight = false;
+			} else if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
+				position.x += speed * deltaTime;
+				facingRight = true;
+			}
+		}
+
+		// 7. GESTIONE ATTERRAGGIO (Salto normale o caduta)
+		if (position.y <= 510 && currentState != State.DEAD) {
+			position.y = 510;
+			velocityY = 0;
+			if (currentState == State.JUMPING)
+				currentState = State.IDLE;
+		}
+
+		// 8. AGGIORNAMENTO STATO IDLE/WALKING (Solo se a terra e non occupato)
+		if (position.y <= 510 && !isAttacking() && currentState != State.DEAD && currentState != State.GRABBED
+				&& currentState != State.CROUCHING) {
+			if (Gdx.input.isKeyPressed(Input.Keys.LEFT) || Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
+				currentState = State.WALKING;
+			} else {
+				currentState = State.IDLE;
+			}
+		}
+
+		// 9. LIMITI LIVELLO E BOSS
+		if (position.x > LevelConstants.FIRST_FLOOR_RIGHT)
+			position.x = LevelConstants.FIRST_FLOOR_RIGHT;
+
+		if (this.screen.getBoss().isActive()) {
+			if (this.position.x < this.screen.getBoss().position.x + 10) {
+				this.position.x = this.screen.getBoss().position.x + 10;
+			}
+		} else if (this.position.x < LevelConstants.FIRST_FLOOR_LEFT) {
+			this.screen.startLevelTransition(deltaTime);
+		}
+
+		// 10. MORTE
+		if (currentState == State.DEAD) {
+			float direction = facingRight ? -1 : 1;
+			position.x += direction * 50f * deltaTime;
+			position.y += velocityY * deltaTime;
+			velocityY -= GRAVITY * deltaTime;
+			return;
+		}
+
+		// 11. LIBERAZIONE (GRABBED)
+		if (currentState == State.GRABBED) {
+			if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT) || Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) {
+				struggleCount++;
+				shakeOffset = (shakeOffset == 0) ? 2 : -2;
+			} else {
+				shakeOffset *= 0.9f;
+			}
+			hitbox.set(0, 0, 0, 0);
+			return;
+		}
+
+		// 12. GESTIONE ANIMAZIONI ATTACCO (Pugno/Calcio a terra)
+		updateAttackStates();
+	}
+
+	// Metodo helper per pulire gli stati di attacco
+	private void updateAttackStates() {
+		if (currentState == State.KICKING_JUMP) {
+			// Il calcio volante non finisce con l'animazione, ma con l'atterraggio
+			// Quindi impostiamo solo la hitbox fissa
+			float hw = 26;
+			float hh = 10;
+			hitbox.set(facingRight ? position.x : position.x - hw, position.y + 35, hw, hh);
+		} else if (currentState == State.PUNCHING) {
+			handleAttackAnimation(PlayerRes.punchAnim, State.IDLE, 40, 18, 8);
+		} else if (currentState == State.KICKING) {
+			handleAttackAnimation(PlayerRes.kickAnim, State.IDLE, 42, 22, 10);
+		} else if (currentState == State.PUNCHING_CROUCH) {
+			handleAttackAnimation(PlayerRes.punchCrouchAnim, State.CROUCHING, 27, 18, 8);
+		} else if (currentState == State.KICKING_CROUCH) {
+			handleAttackAnimation(PlayerRes.kickCrouchAnim, State.CROUCHING, 0, 26, 10);
+		} else {
+			hitbox.set(0, 0, 0, 0);
+		}
+	}
+
+	private void handleAttackAnimation(com.badlogic.gdx.graphics.g2d.Animation anim, State nextState, float yOffset,
+			float hw, float hh) {
+		if (anim.isAnimationFinished(stateTime)) {
+			currentState = nextState;
+			hitbox.set(0, 0, 0, 0);
+		} else if (anim.getKeyFrameIndex(stateTime) == 1) {
+			hitbox.set(facingRight ? position.x : position.x - hw, position.y + yOffset, hw, hh);
+		} else {
+			hitbox.set(0, 0, 0, 0);
+		}
+	}
+
+	public void handleJump() {
+		// Può saltare solo se è IDLE o WALKING e si trova sul terreno
+		if (!isBusy() && position.y <= 510) {
+			currentState = State.JUMPING;
+			velocityY = 280f; // Forza del salto (regola questo valore per l'altezza)
+			stateTime = 0;
+			// AudioRes.playSound(AudioRes.jumpSound); // Se hai un suono per il salto
+		}
+	}
+
+	public void handleCrouch() {
+		if (currentState == State.IDLE || currentState == State.WALKING) {
+			currentState = State.CROUCHING;
+		}
+	}
+
+	public void handleStandUp() {
+		if (currentState == State.CROUCHING) {
+			currentState = State.IDLE;
+		}
+	}
+
+	private boolean isBusy() {
+		return currentState == State.PUNCHING || currentState == State.KICKING || currentState == State.PUNCHING_CROUCH
+				|| currentState == State.KICKING_CROUCH || currentState == State.DEAD || currentState == State.GRABBED;
+	}
+
+	public void handlePunch() {
+	    if (isBusy() && currentState != State.JUMPING) return; 
+
+	    stateTime = 0;
+	    if (currentState == State.JUMPING) {
+	        currentState = State.PUNCHING_JUMP;
+	    } else if (Gdx.input.isKeyPressed(Input.Keys.DOWN)) {
+	        currentState = State.PUNCHING_CROUCH;
+	    } else {
+	        currentState = State.PUNCHING;
+	    }
+	    AudioRes.playSound(AudioRes.punchSound);
+	}
+
+	public void handleKick() {
+		// 1. Blocco se già occupato
+//		if (isBusy())
+//			return;
+//
+//		stateTime = 0;
+//		// 2. Controllo se è calcio alto o basso
+//		if (Gdx.input.isKeyPressed(Input.Keys.DOWN)) {
+//			currentState = State.KICKING_CROUCH;
+//		} else {
+//			currentState = State.KICKING;
+//		}
+//		AudioRes.playSound(AudioRes.kickSound);
+		if (isBusy() && currentState != State.JUMPING)
+			return; // Blocca solo se non è in salto
+
+		stateTime = 0;
+
+		if (currentState == State.JUMPING) {
+			// ATTACCO IN VOLO
+			currentState = State.KICKING_JUMP;
+		} else if (Gdx.input.isKeyPressed(Input.Keys.DOWN)) {
+			// ATTACCO BASSO
+			currentState = State.KICKING_CROUCH;
+		} else {
+			// ATTACCO NORMALE
+			currentState = State.KICKING;
+		}
+		AudioRes.playSound(AudioRes.kickSound);
+	}
+
+	public void updateAnimationOnly(float deltaTime) {
+		// 1. Fai avanzare il tempo dell'animazione corrente
+		stateTime += deltaTime;
+
+		// 2. Mantieni aggiornata la Hurtbox (fondamentale per il debug visivo e
+		// coerenza)
+		float bodyWidth = 20;
+		float currentHurtboxHeight = (currentState == State.CROUCHING) ? 40 : 65;
+		hurtbox.set(position.x - (bodyWidth / 2), position.y, bodyWidth, currentHurtboxHeight);
+
+		// 3. Applica la gravità se Thomas non è a terra (es. se l'intro prevede un
+		// salto)
+		if (position.y > 510 || velocityY > 0) {
+			position.y += velocityY * deltaTime;
+			velocityY -= GRAVITY * deltaTime;
+
+			if (position.y <= 510) {
 				position.y = 510;
 				velocityY = 0;
 				if (currentState == State.JUMPING)
@@ -132,229 +359,9 @@ public class Player {
 			}
 		}
 
-		// LIMITI DEL LIVELLO
-		if (position.x > LevelConstants.FIRST_FLOOR_RIGHT) {
-			position.x = LevelConstants.FIRST_FLOOR_RIGHT;
-		}
-
-		if (this.screen.getBoss().isActive()) {
-			// Se il boss è vivo, Thomas non passa
-			if (this.position.x < this.screen.getBoss().position.x + 10) {
-				this.position.x = this.screen.getBoss().position.x + 10;
-			}
-		} else {
-			// Se il boss è morto, Thomas può raggiungere le scale (es. x = 30)
-			if (this.position.x < LevelConstants.FIRST_FLOOR_LEFT) {
-				this.screen.startLevelTransition(deltaTime);
-			}
-		}
-
-		if (currentState == State.DEAD) {
-			// stateTime += deltaTime;
-			// Sposta Thomas all'indietro rispetto a dove guarda
-			float direction = facingRight ? -1 : 1;
-			position.x += direction * 50f * deltaTime;
-			// Fisica della caduta
-			position.y += velocityY * deltaTime;
-			velocityY -= GRAVITY * deltaTime;
-			return;
-		}
-
-		if (currentState == State.GRABBED) {
-			// 1. LOGICA DI LIBERAZIONE
-			if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT) || Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) {
-				struggleCount++;
-				// Effetto vibrazione: inverte l'offset a ogni pressione
-				shakeOffset = (shakeOffset == 0) ? 2 : -2;
-			} else {
-				// Smorza la vibrazione gradualmente
-				shakeOffset *= 0.9f;
-			}
-			hitbox.set(0, 0, 0, 0); // Non può attaccare mentre è afferrato
-			return; // BLOCCA il resto dell'input
-		}
-
-		// 1. GESTIONE STATI DI ATTACCO (Hanno la precedenza)
-		if (currentState == State.PUNCHING) {
-			if (PlayerRes.punchAnim.isAnimationFinished(stateTime)) {
-				currentState = State.IDLE;
-				hitbox.set(0, 0, 0, 0); // Reset a fine animazione
-			} else {
-				// Attiviamo la hitbox SOLO al frame dell'impatto (es. il frame 1)
-				int frameIndex = PlayerRes.punchAnim.getKeyFrameIndex(stateTime);
-
-				if (frameIndex == 1) { // Supponendo che il frame 1 sia il braccio teso
-					float hw = 18; // Larghezza della hitbox
-					float hh = 8; // Altezza della hitbox
-
-					if (facingRight) {
-						// Parte dal centro e va a destra
-						hitbox.set(position.x, position.y + 40, hw, hh);
-					} else {
-						// Parte dal centro e va a sinistra
-						hitbox.set(position.x - hw, position.y + 40, hw, hh);
-					}
-				} else {
-					hitbox.set(0, 0, 0, 0); // Hitbox spenta negli altri frame
-				}
-			}
-			return;
-		}
-
-		else if (currentState == State.KICKING) {
-			if (PlayerRes.kickAnim.isAnimationFinished(stateTime)) {
-				currentState = State.IDLE;
-				hitbox.set(0, 0, 0, 0);
-			} else {
-				int frameIndex = PlayerRes.kickAnim.getKeyFrameIndex(stateTime);
-
-				// Per il calcio, magari il frame di impatto è il 2 (più lento del pugno)
-				if (frameIndex == 1 || frameIndex == 2) {
-					float hw = 22; // Il calcio arriva più lontano
-					float hh = 10;
-
-					if (facingRight) {
-						hitbox.set(position.x, position.y + 42, hw, hh);
-					} else {
-						hitbox.set(position.x - hw, position.y + 42, hw, hh);
-					}
-				} else {
-					hitbox.set(0, 0, 0, 0);
-				}
-			}
-			return;
-		} else // --- ATTACCO BASSO (Pugno) ---
-		if (currentState == State.PUNCHING_CROUCH) {
-			if (PlayerRes.punchCrouchAnim.isAnimationFinished(stateTime)) {
-				currentState = State.CROUCHING; // Torna abbassato, non IDLE!
-			} else {
-				if (PlayerRes.punchCrouchAnim.getKeyFrameIndex(stateTime) == 1) {
-					float hw = 18;
-					float hh = 8;
-					// Y abbassata (es. GROUND_Y + 20 invece di 40)
-					hitbox.set(facingRight ? position.x : position.x - hw, position.y + 27, hw, hh);
-				}
-			}
-			return;
-		} else // --- ATTACCO BASSO (Calcio) ---
-		if (currentState == State.KICKING_CROUCH) {
-			if (PlayerRes.kickCrouchAnim.isAnimationFinished(stateTime)) {
-				currentState = State.CROUCHING;
-			} else {
-				if (PlayerRes.kickCrouchAnim.getKeyFrameIndex(stateTime) == 1) {
-					float hw = 26;
-					float hh = 10; // Il calcio basso è molto lungo!
-					hitbox.set(facingRight ? position.x : position.x - hw, position.y, hw, hh);
-				}
-			}
-			return;
-		} else {
-			hitbox.set(0, 0, 0, 0); // Disattiva la hitbox se non attacca
-		}
-
-		// --- INPUT EVASIONE E ATTACCO BASSO ---
-		if (Gdx.input.isKeyPressed(Input.Keys.DOWN) && currentState != State.JUMPING) {
-
-			// Se premo Z mentre sono giù -> Pugno Basso
-			if (Gdx.input.isKeyJustPressed(Input.Keys.Z)) {
-				currentState = State.PUNCHING_CROUCH;
-				AudioRes.punchSound.play();
-				stateTime = 0;
-			}
-			// Se premo X mentre sono giù -> Calcio Basso
-			else if (Gdx.input.isKeyJustPressed(Input.Keys.X)) {
-				currentState = State.KICKING_CROUCH;
-				AudioRes.kickSound.play();
-				stateTime = 0;
-			}
-			// Altrimenti resta semplicemente abbassato
-			else if (currentState != State.PUNCHING_CROUCH && currentState != State.KICKING_CROUCH) {
-				currentState = State.CROUCHING;
-			}
-			return;
-		}
-
-		if (Gdx.input.isKeyJustPressed(Input.Keys.UP) && position.y <= 510 && currentState != State.JUMPING) {
-			currentState = State.JUMPING;
-			velocityY = 350f; // Forza del salto arcade
-			return;
-		}
-
-		// 2. INPUT ATTACCO (Trigger)
-		if (Gdx.input.isKeyJustPressed(Input.Keys.Z)) {
-			currentState = State.PUNCHING;
-			AudioRes.punchSound.play();
-			stateTime = 0;
-			return; // Esci per evitare che il movimento sovrascriva lo stato
-		}
-		if (Gdx.input.isKeyJustPressed(Input.Keys.X)) {
-			currentState = State.KICKING;
-			AudioRes.kickSound.play();
-			stateTime = 0;
-			return;
-		}
-
-		// INPUT DI CONTROLLO DEL GIOCO forse bisogna metterli in una classe a parte
-		if (Gdx.input.isKeyJustPressed(Input.Keys.D)) {
-			System.out.println("D pressed");
-			GameControlRes.debugMode = true;
-			return;
-		}
-		if (Gdx.input.isKeyJustPressed(Input.Keys.N)) {
-			System.out.println("N pressed");
-			GameControlRes.debugMode = false;
-			return;
-		}
-		if (Gdx.input.isKeyJustPressed(Input.Keys.P)) {
-			System.out.println("POSITION (" + position.x + "," + position.y + ")");
-			return;
-		}
-
-		// 3. LOGICA DI MOVIMENTO (Solo se non sta attaccando)
-		boolean moving = false;
-		if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
-			position.x += speed * deltaTime;
-			facingRight = true;
-			if (currentState != State.JUMPING)
-				currentState = State.WALKING;
-			moving = true;
-		} else if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
-			position.x -= speed * deltaTime;
-			facingRight = false;
-			if (currentState != State.JUMPING)
-				currentState = State.WALKING;
-			moving = true;
-		}
-
-		if (!moving && currentState != State.JUMPING) {
-			currentState = State.IDLE;
-		}
-	}
-	
-	public void updateAnimationOnly(float deltaTime) {
-		 // 1. Fai avanzare il tempo dell'animazione corrente
-	    stateTime += deltaTime;
-
-	    // 2. Mantieni aggiornata la Hurtbox (fondamentale per il debug visivo e coerenza)
-	    float bodyWidth = 20; 
-	    float currentHurtboxHeight = (currentState == State.CROUCHING) ? 40 : 65;
-	    hurtbox.set(position.x - (bodyWidth / 2), position.y, bodyWidth, currentHurtboxHeight);
-
-	    // 3. Applica la gravità se Thomas non è a terra (es. se l'intro prevede un salto)
-	    if (position.y > 510 || velocityY > 0) {
-	        position.y += velocityY * deltaTime;
-	        velocityY -= GRAVITY * deltaTime;
-
-	        if (position.y <= 510) {
-	            position.y = 510;
-	            velocityY = 0;
-	            if (currentState == State.JUMPING) currentState = State.IDLE;
-	        }
-	    }
-
-	    // 4. Reset della Hitbox di attacco 
-	    // Durante l'intro Thomas non deve poter colpire nulla accidentalmente
-	    hitbox.set(0, 0, 0, 0);
+		// 4. Reset della Hitbox di attacco
+		// Durante l'intro Thomas non deve poter colpire nulla accidentalmente
+		hitbox.set(0, 0, 0, 0);
 	}
 
 	public void draw(SpriteBatch batch) {
@@ -391,7 +398,15 @@ public class Player {
 			break;
 		case CLIMBING_STAIRS:
 			keyFrame = PlayerRes.climbAnim.getKeyFrame(stateTime, true);
-	        break;
+			break;
+		case KICKING_JUMP:
+			// Prendi il frame specifico (solitamente l'ultimo del calcio o uno dedicato)
+			keyFrame = PlayerRes.kickJumpFrame; // Oppure un frame statico dedicato
+			break;
+		case PUNCHING_JUMP:
+			// Prendi il frame specifico (solitamente l'ultimo del calcio o uno dedicato)
+			keyFrame = PlayerRes.punchJumpFrame; // Oppure un frame statico dedicato
+			break;
 		default:
 			keyFrame = PlayerRes.idleFrame;
 			break;
@@ -428,7 +443,7 @@ public class Player {
 	public boolean isAttacking() {
 		if (this.currentState == Player.State.KICKING || this.currentState == Player.State.PUNCHING
 				|| this.currentState == Player.State.PUNCHING_CROUCH || this.currentState == Player.State.KICKING_CROUCH
-				|| this.currentState == Player.State.KICKING_JUMP) {
+				|| this.currentState == Player.State.KICKING_JUMP|| this.currentState == Player.State.PUNCHING_JUMP) {
 			return true;
 		} else {
 			return false;

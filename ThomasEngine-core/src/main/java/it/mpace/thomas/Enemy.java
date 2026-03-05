@@ -31,7 +31,7 @@ public abstract class Enemy {
 	}
 
 	public void hit(Player p) {
-		AudioRes.playerHurt.play();
+		AudioRes.playSound(AudioRes.playerHurt);
 		hp--;
 		if (hp <= 0) {
 			this.isDying = true;

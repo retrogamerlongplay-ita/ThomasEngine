@@ -10,11 +10,6 @@ import it.mpace.thomas.res.StickFighterRes;
 
 public class StickFighter extends Enemy {
 
-	// Stati del Boss
-//	public enum State {
-//		WAITING, WALKING, ATTACKING_HIGH, ATTACKING_MID, ATTACKING_LOW, HURT_HIGH, HURT_MID, HURT_LOW, DEAD, IDLE
-//	}
-	
 	private final float HURT_DURATION = 0.2f; // 200 millisecondi di stordimento
 
 	private EnemyState currentState = EnemyState.WAITING;

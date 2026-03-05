@@ -17,6 +17,7 @@ public class GameControlRes {
 	public static final float STICK_FIGHTER_SPEED=40f;
 	public static final float KNIFE_SPEED=45f;
 	public static final float KNIFE_INTERVAL=5f;
+	public static boolean isMuted = false;
 	
 	public static boolean debugMode=true;
 
@@ -24,6 +25,9 @@ public class GameControlRes {
 		System.out
 				.println("[Score=" + score + "] energy[" + energy + "] lives[" + lives + "] HISCORE=[" + hiScore + "] time["+gameTime+"]");
 	}
+	
+   
+
 
 	public static void incrementScore(int increment) {
 		GameControlRes.score += increment;
@@ -53,12 +57,6 @@ public class GameControlRes {
 
 	public static void decrementEnergy(float decrement) {
 		GameControlRes.energy -= decrement;
-		/*if (GameControlRes.energy <= 0) {
-			GameControlRes.decrementLives();;
-			GameControlRes.energy = MAX_ENERGY;
-			System.out.println("LIFE LOST");
-			printGameStatus();
-		}*/
 	}
 	
 	public static void decrementTime() {
@@ -75,6 +73,19 @@ public class GameControlRes {
         lives = 3;
         score = 0;
         resetForRespawn();
+    }
+    
+    public static void toggleMute() {
+        isMuted = !isMuted;
+        
+        // Se mutiamo, fermiamo la musica corrente immediatamente
+        if (isMuted) {
+            AudioRes.bgm_main_theme.pause();
+            AudioRes.bgm_get_ready.pause();
+        } else {
+            // Se riattiviamo, facciamo ripartire la musica appropriata (opzionale)
+            AudioRes.bgm_main_theme.play();
+        }
     }
 
 }

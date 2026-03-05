@@ -36,11 +36,13 @@ public class Level1Screen extends LevelScreen implements Screen {
 
 	private int knifeThrowersSpawned = 0;
 	private final int MAX_KNIFE_THROWERS_LEVEL_1 = 2;
+	private ThomasMain game=null;
 	
 
 
 
-	public Level1Screen() {
+	public Level1Screen(ThomasMain g) {
+		this.game=g;
 		// Inizializzazione entità
 		minions = new Array<>();
 		// ... setup camera e batch ...
@@ -90,8 +92,8 @@ public class Level1Screen extends LevelScreen implements Screen {
 	            introTimer += dt;
 	            if (introTimer >= READY_DURATION) {
 	                introActive = false; // Restituiamo il controllo al giocatore
-	                AudioRes.bgm_get_ready.stop();
-	                AudioRes.bgm_main_theme.play();
+	                AudioRes.stopMusic( AudioRes.bgm_get_ready);
+	                AudioRes.playMusic(AudioRes.bgm_main_theme);
 	            }
 	        }
 	        
@@ -294,8 +296,8 @@ public class Level1Screen extends LevelScreen implements Screen {
 	}
 
 	private void handleGameOver() {
-		AudioRes.bgm_main_theme.stop();
-		AudioRes.bgm_game_over.play();
+		AudioRes.stopMusic(AudioRes.bgm_main_theme);
+		AudioRes.playMusic(AudioRes.bgm_game_over);
 		if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
 			GameControlRes.fullReset(); // Metodo che azzera vite, score ed energia
 			knives.clear();
@@ -328,6 +330,7 @@ public class Level1Screen extends LevelScreen implements Screen {
 				// Logica Game Over definitiva
 				GameControlRes.lives = 0;
 				System.out.println("GAME OVER - Ritorno al Titolo");
+				 game.setScreen(new GameOverScreen(game));
 				// Qui potresti cambiare Screen se usi la classe Game di libGDX
 			}
 		}
@@ -461,8 +464,8 @@ public class Level1Screen extends LevelScreen implements Screen {
 
 	public void startLevelTransition(float dt) {
 	    // Se il boss è morto e Thomas raggiunge il bordo sinistro
-		AudioRes.bgm_main_theme.stop();
-		AudioRes.bgm_level_completed.play();
+		AudioRes.stopMusic(AudioRes.bgm_main_theme);
+		AudioRes.playMusic(AudioRes.bgm_level_completed);
 	    if (!boss.isActive() && player.position.x <= LevelConstants.FIRST_FLOOR_LEFT_STAIR + 10) {
 	        if (!isLevelComplete) {
 	            isLevelComplete = true;
@@ -503,8 +506,9 @@ public class Level1Screen extends LevelScreen implements Screen {
 	@Override
 	public void show() {
 		 player.position.x = 1775; //per la intro
-		 AudioRes.bgm_get_ready.play();
-
+		 AudioRes.playMusic(AudioRes.bgm_get_ready);
+		 GameInput inputProcessor = new GameInput(player);
+		 Gdx.input.setInputProcessor(inputProcessor);
 	}
 
 	@Override
