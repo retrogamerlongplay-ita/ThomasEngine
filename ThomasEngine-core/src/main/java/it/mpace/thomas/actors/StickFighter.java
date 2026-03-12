@@ -1,12 +1,13 @@
-package it.mpace.thomas;
+package it.mpace.thomas.actors;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 
-import it.mpace.thomas.res.GameControlRes;
+import it.mpace.thomas.LevelConstants;
 import it.mpace.thomas.res.StickFighterRes;
+import it.mpace.thomas.screen.LevelScreen;
 
 public class StickFighter extends Enemy {
 
@@ -17,14 +18,14 @@ public class StickFighter extends Enemy {
 	private float stateTime = 0;
 	private int hp = 100; // Richiede più colpi dei nemici base
 	private float attackRange = 70f; // Il raggio del bastone
-	private float attackCooldown = 1.5f;
-	private float lastAttackTime = 0;
+	private float attackCooldown = 0.6f;
+	private float lastAttackTime = -1;
 	private boolean movingRight = false; // Direzione del pattugliamento
 	public Rectangle stickHitbox = new Rectangle(0, 0, 0, 0);
 
 	public StickFighter(float x, float y) {
 		super(x, y, 10);
-		this.speed = GameControlRes.STICK_FIGHTER_SPEED;
+		this.speed = LevelConstants.STICK_FIGHTER_SPEED;
 		this.hurtbox = new Rectangle(x, y, 32, 64); // Dimensioni standard libGDX
 		currentState = EnemyState.WAITING;
 	}
@@ -34,11 +35,19 @@ public class StickFighter extends Enemy {
 	}
 
 	@Override
-	public void hit(Player player) {
+	public void hit(Player player, LevelScreen level) {
+		super.hit(player, level); // Applica il danno e crea l'effetto visivo
 	    if (isDying || currentState == EnemyState.DEAD) return;
 
 	    hp=hp-10;
 	    stateTime = 0; // Reset timer per l'animazione di danno
+	    
+	    // Se è vicino alle scale, "accorciamo" il cooldown dell'ultimo attacco 
+	    // per farlo reagire subito dopo il colpo ricevuto
+	    float distanceToWall = position.x - (LevelConstants.FIRST_FLOOR_LEFT_STAIR + 20);
+	    if (distanceToWall < 50f) {
+	        lastAttackTime -= 1.0f; // Accelera il prossimo attacco "rubando" tempo al cooldown
+	    }
 
 	    // IA REATTIVA: Sceglie l'animazione di danno in base al colpo di Thomas
 	    if (player.currentState == Player.State.PUNCHING_CROUCH || player.currentState == Player.State.KICKING_CROUCH) {
@@ -53,8 +62,8 @@ public class StickFighter extends Enemy {
 	        // Feedback fisico: il boss viene respinto leggermente
 	        float pushDir = facingRight ? -15 : 15;
 	        position.x += pushDir;
-	        if (position.x < LevelConstants.FIRST_FLOOR_LEFT_STAIR + 20) {
-	            position.x = LevelConstants.FIRST_FLOOR_LEFT_STAIR + 20;
+	        if (position.x < LevelConstants.FIRST_FLOOR_LEFT_STAIR + 10) {
+	            position.x = LevelConstants.FIRST_FLOOR_LEFT_STAIR + 10;
 	        }
 	    }
 	}
@@ -160,7 +169,8 @@ public class StickFighter extends Enemy {
 		        // Thomas è troppo vicino: il Boss indietreggia per colpire
 		        //float retreatDir = (player.position.x > player.position.x) ? 1 : -1;
 		    	float retreatDir = (position.x > player.position.x) ? 1 : -1;
-		        position.x += speed * 0.7f * retreatDir * delta;
+		        //position.x += speed * 0.7f * retreatDir * delta;
+		    	position.x += speed * 1.2f * retreatDir * delta;
 		        facingRight = (player.position.x > position.x);
 		    } else {
 		        // Distanza ideale: "oscilla" e tenta l'attacco
@@ -168,6 +178,11 @@ public class StickFighter extends Enemy {
 		        // Piccola oscillazione per non stare immobile
 		        position.x += (MathUtils.sin(stateTime * 5) * 10f) * delta;
 		    }
+		 // ATTENZIONE: Chiama sempre attemptAttack se sei a distanza di tiro!
+		    if (distanceToPlayer < attackRange + 20) {
+		        attemptAttack(player);
+		    }
+		    
 		    break;
 
 		case ATTACKING_HIGH:
@@ -243,29 +258,34 @@ public class StickFighter extends Enemy {
 	}
 
 	private void attemptAttack(Player player) {
-		if (stateTime - lastAttackTime > attackCooldown) {
-			if (player.currentState == Player.State.CROUCHING) {
-				currentState = EnemyState.ATTACKING_LOW; // Stato da mappare nelle Res
-			} else // IA REATTIVA
-			if (player.currentState == Player.State.JUMPING) {
-				currentState = EnemyState.ATTACKING_HIGH; // Intercetta il salto
-			} else {
-				// Alterna tra MID e HIGH per rompere la guardia
-				currentState = (MathUtils.randomBoolean()) ? EnemyState.ATTACKING_MID : EnemyState.ATTACKING_HIGH;
-			}
-			lastAttackTime = stateTime;
-			stateTime = 0;
+		//System.out.println("Attempting attack. StateTime: " + stateTime + ", LastAttackTime: " + lastAttackTime);
+		
+		// Calcoliamo quanto il boss è vicino al limite sinistro (le scale)
+	    float distanceToWall = position.x - (LevelConstants.FIRST_FLOOR_LEFT_STAIR + 20);
+	    
+	    // Se è a meno di 40 pixel dal muro, dimezziamo il tempo di attesa (attacca il doppio più veloce)
+	    float dynamicCooldown = (distanceToWall < 40f) ? attackCooldown / 2f : attackCooldown;
 
-			lastAttackTime = stateTime;
-			// Qui andrebbe inserita la logica per danneggiare il giocatore
-		}
+	    if (stateTime - lastAttackTime > dynamicCooldown) {
+	        // IA REATTIVA (La tua logica esistente)
+	        if (player.currentState == Player.State.CROUCHING) {
+	            currentState = EnemyState.ATTACKING_LOW;
+	        } else if (player.currentState == Player.State.JUMPING) {
+	            currentState = EnemyState.ATTACKING_HIGH;
+	        } else {
+	            currentState = (MathUtils.randomBoolean()) ? EnemyState.ATTACKING_MID : EnemyState.ATTACKING_HIGH;
+	        }
+	        
+	        // Se è all'angolo, potremmo anche aumentare la probabilità di un attacco MID che è più difficile da schivare
+	        if (distanceToWall < 30f && MathUtils.random() > 0.7f) {
+	             currentState = EnemyState.ATTACKING_MID; 
+	        }
+
+	        lastAttackTime = Math.min(dynamicCooldown/2, stateTime);
+	        stateTime = 0;
+	    }
 	}
 
-//	public void takeDamage(int damage) {
-//		hp -= damage;
-//		if (hp <= 0)
-//			currentState = State.DEAD;
-//	}
 	
 	public int getHp() {
     	return this.hp;

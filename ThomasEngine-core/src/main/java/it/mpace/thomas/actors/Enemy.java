@@ -1,19 +1,23 @@
-package it.mpace.thomas;
+package it.mpace.thomas.actors;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 
 import it.mpace.thomas.res.AudioRes;
+import it.mpace.thomas.res.PlayerRes;
+import it.mpace.thomas.screen.LevelScreen;
+import it.mpace.thomas.sprite.HitEffect;
 
 public abstract class Enemy {
 	public Vector2 position;
 	public float speed; // <--- Definita qui per tutti
 	public boolean active = true;
 	public boolean facingRight;
-	protected float stateTime = 0;
-	protected float velocityY = 0;
+	public float stateTime = 0;
+	public float velocityY = 0;
 	public Rectangle hurtbox;
 	public boolean isDying = false;
 	public int hp = 1; // Default 1 colpo
@@ -30,8 +34,13 @@ public abstract class Enemy {
 		this.hurtbox = new Rectangle(x, y, 20, 65);
 	}
 
-	public void hit(Player p) {
+	public void hit(Player p, LevelScreen level) {
 		AudioRes.playSound(AudioRes.playerHurt);
+		float contactX = MathUtils.clamp(p.hitbox.x + p.hitbox.width / 2, hurtbox.x, hurtbox.x + hurtbox.width);
+		float contactY = MathUtils.clamp(p.hitbox.y + p.hitbox.height / 2, hurtbox.y, hurtbox.y + hurtbox.height);
+	    // 2. Creiamo l'effetto visivo (usando la yellow per i nemici)
+	    level.hitEffects.add(new HitEffect(contactX, contactY, PlayerRes.hitYellowFrame));
+
 		hp--;
 		if (hp <= 0) {
 			this.isDying = true;
@@ -88,6 +97,10 @@ public abstract class Enemy {
 
 	public boolean isActive() {
 		return this.active;
+	}
+	
+	public void setActive(boolean active) {
+		this.active = active;
 	}
 
 	// Metodo "gancio" per ThomasMain: solo i Gripper lo sovrascriveranno

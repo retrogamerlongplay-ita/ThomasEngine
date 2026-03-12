@@ -3,9 +3,7 @@ package it.mpace.thomas.res;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
-import com.badlogic.gdx.graphics.g2d.TextureAtlas.AtlasRegion;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.utils.Array;
 
 public class StickFighterRes {
     public static TextureAtlas atlas;
@@ -22,12 +20,6 @@ public class StickFighterRes {
 
     public static void load() {
         atlas = new TextureAtlas(Gdx.files.internal("sprites/boss1.atlas"));
-        Array<AtlasRegion> a = atlas.findRegions("boss1_walk");
-        if(a==null) {
-        	System.out.println("unable to load boss1_walk");
-        }else {
-        	System.out.println("boss1_walk loaded ["+a.size+"]");
-        }
         walkAnim = new Animation<>(0.15f, atlas.findRegions("boss1_walk"), Animation.PlayMode.LOOP);
         dieAnim = new Animation<>(0.15f, atlas.findRegions("boss1_die"), Animation.PlayMode.NORMAL);
         attackHighAnim = new Animation<>(0.15f, atlas.findRegions("boss1_high_attack"), Animation.PlayMode.NORMAL);

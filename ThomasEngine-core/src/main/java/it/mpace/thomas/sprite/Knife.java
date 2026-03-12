@@ -1,16 +1,16 @@
-package it.mpace.thomas;
+package it.mpace.thomas.sprite;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 
-import it.mpace.thomas.res.GameControlRes;
+import it.mpace.thomas.LevelConstants;
 import it.mpace.thomas.res.KnifeThrowerRes;
 
 public class Knife {
     public Vector2 position;
-    public float speed = GameControlRes.KNIFE_SPEED;
+    public float speed = LevelConstants.FIRST_FLOOR_KNIFE_SPEED;
     public boolean active = true;
     public boolean facingRight;
     public Rectangle hitbox;

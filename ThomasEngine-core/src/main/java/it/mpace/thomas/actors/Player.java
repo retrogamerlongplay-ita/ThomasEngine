@@ -1,4 +1,4 @@
-package it.mpace.thomas;
+package it.mpace.thomas.actors;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
@@ -7,15 +7,18 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 
+import it.mpace.thomas.data.LevelInfo;
 import it.mpace.thomas.res.AudioRes;
 import it.mpace.thomas.res.GameControlRes;
 import it.mpace.thomas.res.PlayerRes;
+import it.mpace.thomas.screen.LevelScreen;
+import it.mpace.thomas.sprite.HitEffect;
 
 public class Player {
 	// Stati del giocatore
 	public enum State {
 		IDLE, WALKING, PUNCHING, KICKING, CROUCHING, JUMPING, GRABBED, DEAD, PUNCHING_CROUCH, KICKING_CROUCH,
-		KICKING_JUMP, PUNCHING_JUMP,  CLIMBING_STAIRS
+		KICKING_JUMP, PUNCHING_JUMP,  CLIMBING_STAIRS, HURT
 	}
 
 	private final float HURT_DURATION = 0.1f; // Durata del "dolore"
@@ -35,27 +38,43 @@ public class Player {
 	private float shakeOffset = 0; // Per l'effetto vibrazione
 
 	public Rectangle hitbox;
-	Rectangle hurtbox;
+	public Rectangle hurtbox;
 	private float hurtTimer = 0;
 	private LevelScreen screen = null;
 
 	// Nella classe Player
 	public boolean autoWalking = false;
+	
+	private LevelInfo levelInfo;
 
-	public Player(float x, float y, LevelScreen s) {
+	public Player(float x, float y, LevelScreen s, LevelInfo info) {
 		position = new Vector2(x, y);
 		hitbox = new Rectangle(0, 0, 0, 0); // Inizialmente vuota
 		hurtbox = new Rectangle(0, 0, 32, 70); // Dimensioni Thomas
+		this.levelInfo = info;
 		stateTime = 0f;
 		this.screen = s;
 	}
 
-	public void takeHit(float damage) {
+	public void takeHit(float damage, LevelScreen level) {
 		if (currentState == State.DEAD)
 			return;
+		
+		// Se eravamo presi, ci liberiamo per il dolore del colpo
+	    if (currentState == State.GRABBED) {
+	        this.struggleCount = 0; 
+	        // Notifica ai nemici vicini di staccarsi (opzionale, lo gestiremo nel loop)
+	    }
+	    
+	 // Calcola il punto dell'impatto (al centro della hurtbox di Thomas)
+	    float hitX = hurtbox.x + hurtbox.width / 2f;
+	    float hitY = hurtbox.y + hurtbox.height / 2f;
+
+	    // Aggiunge la scintilla ROSSA
+	    screen.hitEffects.add(new HitEffect(hitX, hitY, PlayerRes.hitRedFrame));
 
 		GameControlRes.decrementEnergy(damage);
-		this.currentState = State.GRABBED; // Usiamo l'animazione hurt
+		this.currentState = State.HURT; // Usiamo l'animazione hurt
 		this.stateTime = 0;
 		this.hurtTimer = HURT_DURATION;
 		AudioRes.playSound(AudioRes.playerHurt);
@@ -63,6 +82,7 @@ public class Player {
 	}
 
 	public void triggerDeath() {
+		//System.out.println("TRIGGER DEATH");
 		this.currentState = State.DEAD;
 		AudioRes.playSound(AudioRes.dieSound);
 		this.stateTime = 0;
@@ -86,11 +106,9 @@ public class Player {
 	public void update(float deltaTime) {
 		stateTime += deltaTime;
 		float bodyWidth = 20;
-
 		// 1. GESTIONE HURTBOX DINAMICA
-		float currentHurtboxHeight = (currentState == State.CROUCHING) ? 40 : 65;
+		float currentHurtboxHeight = (currentState == State.CROUCHING||currentState == State.KICKING_CROUCH||currentState == State.PUNCHING_CROUCH) ? 40 : 65;
 		hurtbox.set(position.x - (bodyWidth / 2), position.y, bodyWidth, currentHurtboxHeight);
-
 		// 2. GESTIONE STORDIMENTO (HURT)
 		if (hurtTimer > 0) {
 			hurtTimer -= deltaTime;
@@ -99,10 +117,9 @@ public class Player {
 			}
 			return;
 		}
-
 		// 3. AUTO-WALKING (TRANSIZIONI LIVELLO)
 		if (autoWalking) {
-			if (position.x > LevelConstants.FIRST_FLOOR_LEFT_STAIR) {
+			if (position.x > this.levelInfo.getGoalX()) {
 				currentState = State.WALKING;
 				facingRight = false;
 				position.x -= speed * 0.5f * deltaTime;
@@ -113,9 +130,8 @@ public class Player {
 			}
 			return;
 		}
-
-		// 4. FISICA DI CADUTA E GRAVITÀ
-		if ((position.y > 510 || velocityY > 0) && currentState != State.DEAD) {
+		// 4. FISICA DI CADUTA E GRAVITÀ (SALTO)
+		if ((position.y > this.levelInfo.getGroundY() || velocityY > 0) && currentState != State.DEAD) {
 			position.y += velocityY * deltaTime;
 			velocityY -= GRAVITY * deltaTime;
 		}
@@ -136,8 +152,8 @@ public class Player {
 			hitbox.set(facingRight ? position.x : position.x - hw, position.y + 35, hw, 10);
 
 			// Atterraggio
-			if (position.y <= 510) {
-				position.y = 510;
+			if (position.y <= this.levelInfo.getGroundY() ) {
+				position.y = this.levelInfo.getGroundY();
 				velocityY = 0;
 				currentState = State.IDLE;
 				hitbox.set(0, 0, 0, 0);
@@ -155,14 +171,14 @@ public class Player {
 		    hitbox.set(facingRight ? position.x : position.x - hw, position.y + 40, hw, 8);
 
 		    // Atterraggio
-		    if (position.y <= 510) {
-		        position.y = 510; velocityY = 0;
+		    if (position.y <=this.levelInfo.getGroundY() ) {
+		        position.y = this.levelInfo.getGroundY();
+		        velocityY = 0;
 		        currentState = State.IDLE;
 		        hitbox.set(0, 0, 0, 0);
 		    }
 		    return; // Protegge lo stato
 		}
-
 		// 6. MOVIMENTO ORIZZONTALE TERRA/ARIA (Solo se non attacca o è accovacciato)
 		if (!isAttacking() && currentState != State.DEAD && currentState != State.GRABBED
 				&& currentState != State.CROUCHING) {
@@ -176,15 +192,15 @@ public class Player {
 		}
 
 		// 7. GESTIONE ATTERRAGGIO (Salto normale o caduta)
-		if (position.y <= 510 && currentState != State.DEAD) {
-			position.y = 510;
+		if (position.y <= this.levelInfo.getGroundY() && currentState != State.DEAD) {
+			position.y = this.levelInfo.getGroundY();
 			velocityY = 0;
 			if (currentState == State.JUMPING)
 				currentState = State.IDLE;
 		}
 
 		// 8. AGGIORNAMENTO STATO IDLE/WALKING (Solo se a terra e non occupato)
-		if (position.y <= 510 && !isAttacking() && currentState != State.DEAD && currentState != State.GRABBED
+		if (position.y <= this.levelInfo.getGroundY() && !isAttacking() && currentState != State.DEAD && currentState != State.GRABBED
 				&& currentState != State.CROUCHING) {
 			if (Gdx.input.isKeyPressed(Input.Keys.LEFT) || Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
 				currentState = State.WALKING;
@@ -194,14 +210,15 @@ public class Player {
 		}
 
 		// 9. LIMITI LIVELLO E BOSS
-		if (position.x > LevelConstants.FIRST_FLOOR_RIGHT)
-			position.x = LevelConstants.FIRST_FLOOR_RIGHT;
+		if (this.levelInfo.isExceedingLevelBegin(this.position.x))
+			position.x = this.levelInfo.getLevelBeginX();
 
 		if (this.screen.getBoss().isActive()) {
+			//System.out.println("BOSS ATTIVO - LIMITI IMPOSTATI");
 			if (this.position.x < this.screen.getBoss().position.x + 10) {
 				this.position.x = this.screen.getBoss().position.x + 10;
 			}
-		} else if (this.position.x < LevelConstants.FIRST_FLOOR_LEFT) {
+		} else if (this.levelInfo.isExceedingLevelGoal(this.position.x)) {
 			this.screen.startLevelTransition(deltaTime);
 		}
 
@@ -251,7 +268,7 @@ public class Player {
 		}
 	}
 
-	private void handleAttackAnimation(com.badlogic.gdx.graphics.g2d.Animation anim, State nextState, float yOffset,
+	private void handleAttackAnimation(com.badlogic.gdx.graphics.g2d.Animation<TextureRegion> anim, State nextState, float yOffset,
 			float hw, float hh) {
 		if (anim.isAnimationFinished(stateTime)) {
 			currentState = nextState;
@@ -265,7 +282,7 @@ public class Player {
 
 	public void handleJump() {
 		// Può saltare solo se è IDLE o WALKING e si trova sul terreno
-		if (!isBusy() && position.y <= 510) {
+		if (!isBusy() && position.y <= this.levelInfo.getGroundY()) {
 			currentState = State.JUMPING;
 			velocityY = 280f; // Forza del salto (regola questo valore per l'altezza)
 			stateTime = 0;
@@ -305,18 +322,6 @@ public class Player {
 	}
 
 	public void handleKick() {
-		// 1. Blocco se già occupato
-//		if (isBusy())
-//			return;
-//
-//		stateTime = 0;
-//		// 2. Controllo se è calcio alto o basso
-//		if (Gdx.input.isKeyPressed(Input.Keys.DOWN)) {
-//			currentState = State.KICKING_CROUCH;
-//		} else {
-//			currentState = State.KICKING;
-//		}
-//		AudioRes.playSound(AudioRes.kickSound);
 		if (isBusy() && currentState != State.JUMPING)
 			return; // Blocca solo se non è in salto
 
@@ -342,17 +347,17 @@ public class Player {
 		// 2. Mantieni aggiornata la Hurtbox (fondamentale per il debug visivo e
 		// coerenza)
 		float bodyWidth = 20;
-		float currentHurtboxHeight = (currentState == State.CROUCHING) ? 40 : 65;
+		float currentHurtboxHeight = (currentState == State.CROUCHING||currentState == State.KICKING_CROUCH||currentState == State.PUNCHING_CROUCH) ? 40 : 65;
 		hurtbox.set(position.x - (bodyWidth / 2), position.y, bodyWidth, currentHurtboxHeight);
 
 		// 3. Applica la gravità se Thomas non è a terra (es. se l'intro prevede un
 		// salto)
-		if (position.y > 510 || velocityY > 0) {
+		if (position.y > this.levelInfo.getGroundY() || velocityY > 0) {
 			position.y += velocityY * deltaTime;
 			velocityY -= GRAVITY * deltaTime;
 
-			if (position.y <= 510) {
-				position.y = 510;
+			if (position.y <= this.levelInfo.getGroundY()) {
+				position.y = this.levelInfo.getGroundY();
 				velocityY = 0;
 				if (currentState == State.JUMPING)
 					currentState = State.IDLE;
@@ -370,6 +375,9 @@ public class Player {
 		// Scegliamo il frame in base allo stato
 		switch (currentState) {
 		case GRABBED:
+			keyFrame = PlayerRes.walkAnim.getKeyFrame(0);
+			break;
+		case HURT:
 			keyFrame = PlayerRes.hurtAnim.getKeyFrame(stateTime);
 			break;
 		case WALKING:
