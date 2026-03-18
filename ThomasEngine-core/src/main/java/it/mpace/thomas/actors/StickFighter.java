@@ -16,7 +16,7 @@ public class StickFighter extends Enemy {
 	private EnemyState currentState = EnemyState.WAITING;
 
 	private float stateTime = 0;
-	private int hp = 100; // Richiede più colpi dei nemici base
+	private int hp = 50; // Richiede più colpi dei nemici base
 	private float attackRange = 70f; // Il raggio del bastone
 	private float attackCooldown = 0.6f;
 	private float lastAttackTime = -1;
@@ -40,6 +40,7 @@ public class StickFighter extends Enemy {
 	    if (isDying || currentState == EnemyState.DEAD) return;
 
 	    hp=hp-10;
+	    //System.out.println("StickFighter hit! Remaining HP: " + hp);
 	    stateTime = 0; // Reset timer per l'animazione di danno
 	    
 	    // Se è vicino alle scale, "accorciamo" il cooldown dell'ultimo attacco 
@@ -68,6 +69,19 @@ public class StickFighter extends Enemy {
 	    }
 	}
 	
+	
+	
+	
+	@Override
+	public int getHitScoreValue() {
+		return 50;
+	}
+
+	@Override
+	public int getDieScoreValue() {
+		return 1000;
+	}
+
 	public Rectangle getHitBox() {
 		return this.stickHitbox;
 	}
@@ -87,8 +101,15 @@ public class StickFighter extends Enemy {
 		System.out.println("BOSS DEFEATED! THE STAIRS ARE OPEN.");
 	}
 	
+    @Override
+	public void setState(EnemyState newState) {
+		this.currentState = newState;
+		
+	}
+	
 
 	public void update(float delta, Player player) {
+		//System.out.println("StickFighter State: " + currentState + ", Position: (" + position.x + ", " + position.y + ")");
 		// 1. SE È MORTO: Applica solo la fisica di volo e ESCI
 	    if (currentState == EnemyState.DEAD || isDying) {
 	        stateTime += delta;
@@ -115,6 +136,7 @@ public class StickFighter extends Enemy {
 		    if (stateTime >= HURT_DURATION) {
 		        currentState = EnemyState.WALKING;
 		        stateTime = 0;
+		        lastAttackTime = 0; // Resetta il cooldown dell'attacco dopo lo stordimento
 		    }
 		    // Durante lo stordimento il boss non si muove e non attacca, quindi usciamo
 		    // Aggiorna comunque la hurtbox prima di uscire
@@ -259,7 +281,9 @@ public class StickFighter extends Enemy {
 
 	private void attemptAttack(Player player) {
 		//System.out.println("Attempting attack. StateTime: " + stateTime + ", LastAttackTime: " + lastAttackTime);
-		
+		 if (isDying || currentState == EnemyState.DEAD || currentState == EnemyState.HURT_HIGH || currentState == EnemyState.HURT_LOW) {
+		        return;
+		    }
 		// Calcoliamo quanto il boss è vicino al limite sinistro (le scale)
 	    float distanceToWall = position.x - (LevelConstants.FIRST_FLOOR_LEFT_STAIR + 20);
 	    

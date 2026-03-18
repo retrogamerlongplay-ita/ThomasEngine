@@ -141,13 +141,47 @@ package it.mpace.thomas;
  * 
  * @version 0.0.25
  * <ol>
+ * <li>Package restructuring</li>
  * <li>Added all sprites needed for floor 2</li>
- * <li></li>
+ * <li>Implemented Floating Score</li>
+ * <li>Optimized red hit on Player</li>
+ * <li>Restructured update method and transferred in LevelScreen</li>
+ * <li>Implemented Snake actor for floor 2</li>
+ * <li>Corrected bug of respawn in floor 2</li>
+ * <li>Implemented Dragon actor for floor 2</li>
+ * <li>Basic implementation of ExplodingBall actor for floor 2</li>
+ * <li>Resolved camera position bug at the beginning of floor 2</li>
+ * </ol>
+ * 
+ * @version 0.0.26
+ * <ol>
+ * <li>StickFighter bug resolved</li>
+ * <li>Abstracted score logic in specialized class</li>
+ * <li>Abstracted floating score logic in specialized class</li>
+ * <li>Implemented exploding state and explosion for FallingHazard</li>
+ * <li>Finalized Snake implementation</li>
+ * <li>Finalized Dragon implementation</li>
+ * <li>Implementation of Exploding Balls in floor 2: it is slightly different from the arcade behaviour but I like it</li>
+ * <li>Basic implementation of BoomerangThrower for floor 2</li>
+ * </ol>
+ * 
+ * @version 0.0.27
+ * <ol>
+ * <li>BoomerangThrower activation and behaviour</li>
+ * <li>Corrected bug in floor 2 final transition</li>
+ * <li>Implemented Intro Letter sequence</li>
+ * <li>Symbols resources</li>
+ * <li>Optimized HUD with symbols for lives</li>
+ * <li>Implemented GrabbingEnemies class</li>
+ * <li>Optimized TomTom behaviour</li>
+ * <li>Optimized ExplodingBall behaviour with PotProjectile</li>
+ * <li>GiantRes implementation</li>
+ * <li>HunchbackRes basic implementation</li>
  * </ol>
  */
 
 public class ThomasCredits {
-	public static String VER = "0.0.25x";
+	public static String VER = "0.0.27";
 	public static String AUTHOR= "Matteo Pace";
 	public static String GAME_ENGINE_TITLE = "THOMAS";
 	public static String TITLE="Kung Fu Master";
@@ -163,9 +197,8 @@ public class ThomasCredits {
 
 /***
  * TODO:
- * - Sequenza introduttiva (il rapimento di Sylvia)
- * - Miglioramento HUD teste di Thomas come vite
+ * - Sequenza introduttiva attract mode (rapimento Silvia)
+ * - Bilanciamento dello spawning dei nemici
  * - Miglioramento HUD rappresentazione piani
- * - Miglioramento implementazione di frame di hit rosso a seconda di dove si viene colpiti (testa, corpo, gambe)
  * - Sequenza introduttiva floor 2 
 */

@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 public class PlayerRes {
 	public static TextureAtlas atlas;
 	public static TextureAtlas hitAtlas;
+	public static TextureAtlas symbolsAtlas;
 
 	// Animazioni
 	public static Animation<TextureRegion> walkAnim;
@@ -29,11 +30,13 @@ public class PlayerRes {
 	public static TextureRegion hurtLowFrame;
 	public static TextureRegion hitYellowFrame;
 	public static TextureRegion hitRedFrame;
+	public static TextureRegion thomasHeadFrame;
 
 	public static void load() {
 		// Carica il file descrittore
 		atlas = new TextureAtlas(Gdx.files.internal("sprites/thomas.atlas"));
 		hitAtlas = new TextureAtlas(Gdx.files.internal("sprites/Hit.atlas"));
+		symbolsAtlas = new TextureAtlas(Gdx.files.internal("sprites/symbols.atlas"));
 
 		// IDLE
 		idleFrame = atlas.findRegion("thomas_idle");
@@ -58,12 +61,14 @@ public class PlayerRes {
 		hurtLowFrame = hurtAnim.getKeyFrames()[1];
 		hitYellowFrame = hitAtlas.findRegion("yellow_hit");
 		hitRedFrame = hitAtlas.findRegion("red_hit");
+		
+		thomasHeadFrame = symbolsAtlas.findRegion("life_symbol");
+		
 	}
 
 	public static void dispose() {
-		if (atlas != null)
-			atlas.dispose();
-		if(hitAtlas != null)
-			hitAtlas.dispose();
+	    if (atlas != null) atlas.dispose();
+	    if (hitAtlas != null) hitAtlas.dispose();
+	    if (symbolsAtlas != null) symbolsAtlas.dispose();
 	}
 }

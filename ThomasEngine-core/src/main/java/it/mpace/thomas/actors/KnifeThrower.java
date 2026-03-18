@@ -31,6 +31,8 @@ public class KnifeThrower extends Enemy {
 	private final float HURT_DURATION = 0.15f;
 
 	private Knife activeKnife = null;
+	
+	private Rectangle hitbox = new Rectangle(0, 0, 0, 0);
 
 	public KnifeThrower(float x, float y) {
 		super(x, y, 2);
@@ -183,6 +185,18 @@ public class KnifeThrower extends Enemy {
 			position.x += (facingRight ? -15 : 15);
 		}
 	}
+	
+	
+
+	@Override
+	public int getHitScoreValue() {
+		return 50;
+	}
+
+	@Override
+	public int getDieScoreValue() {
+		return 500;
+	}
 
 	@Override
 	public void draw(SpriteBatch batch) {
@@ -235,7 +249,6 @@ public class KnifeThrower extends Enemy {
 
 	@Override
 	public Rectangle getHitBox() {
-		// TODO Auto-generated method stub
-		return new Rectangle(0, 0, 0, 0);
+		return this.hitbox;
 	}
 }

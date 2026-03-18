@@ -4,6 +4,8 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ScreenUtils;
 
@@ -11,18 +13,16 @@ import it.mpace.thomas.GameInput;
 import it.mpace.thomas.LevelConstants;
 import it.mpace.thomas.ThomasMain;
 import it.mpace.thomas.actors.Enemy;
+import it.mpace.thomas.actors.Enemy.EnemyState;
 import it.mpace.thomas.actors.Gripper;
 import it.mpace.thomas.actors.KnifeThrower;
 import it.mpace.thomas.actors.Player;
-import it.mpace.thomas.actors.StickFighter;
-import it.mpace.thomas.actors.Enemy.EnemyState;
 import it.mpace.thomas.actors.Player.State;
+import it.mpace.thomas.actors.StickFighter;
 import it.mpace.thomas.data.LevelInfo;
 import it.mpace.thomas.res.AudioRes;
 import it.mpace.thomas.res.GameControlRes;
-import it.mpace.thomas.res.GripperRes;
-import it.mpace.thomas.res.KnifeThrowerRes;
-import it.mpace.thomas.res.PlayerRes;
+import it.mpace.thomas.sprite.FloatingScore;
 import it.mpace.thomas.sprite.HitEffect;
 import it.mpace.thomas.sprite.Knife;
 
@@ -48,6 +48,7 @@ public class Level1Screen extends LevelScreen implements Screen {
 		levelInfo.setSpawnOffset(LevelConstants.SPAWN_OFFSET_FIRST_FLOOR);
 		levelInfo.setCameraY(LevelConstants.FIRST_FLOOR_Y);
 		levelInfo.setSpawnInteval(LevelConstants.SPAWN_INTERVAL_FIRST_FLOOR);
+		levelInfo.setBossDistance(LevelConstants.FIRST_FLOOR_BOSS_DISTANCE);
 		camera.position.x = this.levelInfo.getRespawnX();
 		camera.position.y = this.levelInfo.getCameraY();
 		player = new Player(levelInfo.getLevelBeginX(), levelInfo.getGroundY(), this, levelInfo);
@@ -58,56 +59,51 @@ public class Level1Screen extends LevelScreen implements Screen {
 	public Enemy getBoss() {
 		return this.boss;
 	}
+	
+	
 
-	public void update(float dt) {
-		if (introActive) {
-			updateCamera();
+	@Override
+	public boolean isExceedingBoss(float x) {
+		return x < this.boss.position.x + 10;
+	}
+
+	protected void handleIntro(float dt) {
+		updateCamera();
+		this.introTimer += dt;
+		// FASE 1: Thomas cammina da solo verso sinistra (entrata in scena)
+		if (this.player.position.x > this.levelInfo.getRespawnX()) {
+			if (this.player.currentState != Player.State.WALKING) {
+				this.player.currentState = Player.State.WALKING;
+			}
+			this.player.facingRight = false;
+			this.player.position.x -= GameControlRes.PLAYER_SPEED * 0.8f * dt;
+		} else {
+			// FASE 2: Thomas si ferma, aspettiamo che il timer scada
+			this.player.currentState = Player.State.IDLE;
 			this.introTimer += dt;
-			// FASE 1: Thomas cammina da solo verso sinistra (entrata in scena)
-			if (this.player.position.x > this.levelInfo.getRespawnX()) {
-				if (this.player.currentState != Player.State.WALKING) {
-					this.player.currentState = Player.State.WALKING;
-				}
-				this.player.facingRight = false;
-				this.player.position.x -= GameControlRes.PLAYER_SPEED * 0.8f * dt;
-			} else {
-				// FASE 2: Thomas si ferma, aspettiamo che il timer scada
-				this.player.currentState = Player.State.IDLE;
-				this.introTimer += dt;
-				if (this.introTimer >= READY_DURATION) {
-					introActive = false; // Restituiamo il controllo al giocatore
-					AudioRes.stopMusic(AudioRes.bgm_get_ready);
-					AudioRes.playMusic(AudioRes.bgm_main_theme);
-				}
-			}
-			this.player.updateAnimationOnly(dt); // Un metodo che aggiorna solo i frame senza leggere l'input
-			return; // Salta il resto dell'update (nemici, timer di gioco, ecc.)
-		}
-		// 1. GESTIONE TEMPO DI GIOCO
-		GameControlRes.gameTime -= GameControlRes.TIME_SPEED * dt;
-		if (GameControlRes.gameTime <= 0) {
-			GameControlRes.gameTime = 0;
-			if (player.currentState != Player.State.DEAD) {
-				player.triggerDeath();
+			if (this.introTimer >= READY_DURATION) {
+				introActive = false; // Restituiamo il controllo al giocatore
+				AudioRes.stopMusic(AudioRes.bgm_get_ready);
+				AudioRes.playMusic(AudioRes.bgm_main_theme);
 			}
 		}
-		// 2. UPDATE DEL GIOCATORE
-		player.update(dt);
-		// 3. GESTIONE LIBERAZIONE (Se Thomas si libera, tutti i Gripper che lo tengono
-		// muoiono)
-		if (player.currentState != State.DEAD && player.checkAndResetLiberation()) {
-			for (Enemy e : enemies) {
-				if (e instanceof Gripper && ((Gripper) e).state == EnemyState.GRABBING) {
-					Gripper g = (Gripper) e;
-					g.hit(player, this); // Il nemico muore e vola via
-					// Opzionale: aggiungi punti extra per la liberazione
-					g.position.x += (g.position.x > player.position.x) ? 20 : -20;
-					GameControlRes.incrementScore(50);
+		this.player.updateAnimationOnly(dt); // Un metodo che aggiorna solo i frame senza leggere l'input
+
+	}
+
+	protected void handleGrabbingEnemies(float dt) {
+		for (Enemy e : enemies) {
+			if (e instanceof Gripper) {
+				Gripper g = (Gripper) e;
+
+				if (g.state == EnemyState.GRABBING && player.currentState != Player.State.DEAD) {
+					g.hit(player, this); // Applichiamo il danno se è in stato di grabbing
 				}
 			}
-			// Feedback visivo: Thomas "scuote" lo schermo o fa un piccolo salto
-			camera.position.y += 2; // Un piccolo sussulto della camera
 		}
+	}
+
+	protected void handleEnemies(float dt) {
 		boolean isBossActive = (boss.getState() != EnemyState.WAITING && boss.getState() != EnemyState.DEAD);
 		// 4. LOGICA NEMICI (Loop a ritroso per sicurezza)
 		for (int i = enemies.size - 1; i >= 0; i--) {
@@ -127,11 +123,6 @@ public class Level1Screen extends LevelScreen implements Screen {
 					&& !e.isDying) {
 				if (player.hitbox.overlaps(e.hurtbox)) {
 					e.hit(player, this);
-					if (e.isDying) {
-						GameControlRes.incrementScore(e instanceof KnifeThrower ? 500 : 100);
-					} else {
-						GameControlRes.incrementScore(50);
-					}
 				}
 			}
 			// --- COLLISIONE: Nemico afferra Thomas (Solo Gripper) ---
@@ -170,6 +161,9 @@ public class Level1Screen extends LevelScreen implements Screen {
 			if (!e.active)
 				enemies.removeIndex(i);
 		}
+	}
+
+	protected void handleKnives(float dt) {
 		// 5. LOGICA PROIETTILI (COLTELLI)
 		for (int i = knives.size - 1; i >= 0; i--) {
 			Knife k = knives.get(i);
@@ -185,7 +179,7 @@ public class Level1Screen extends LevelScreen implements Screen {
 				if (k.position.y < this.levelInfo.getGroundY() + 25 && player.currentState == State.JUMPING)
 					hit = false;
 				if (hit) {
-					player.takeHit(20f,this); // Danno consistente dai coltelli
+					player.takeHit(20f, this, k.position.x, k.position.y); // Danno consistente dai coltelli
 					k.active = false; // Il coltello scompare dopo l'impatto
 				}
 			}
@@ -194,13 +188,29 @@ public class Level1Screen extends LevelScreen implements Screen {
 				knives.removeIndex(i);
 			}
 		}
+	}
+
+	protected void handleBoss(float dt) {
+//		if (boss.getState() == EnemyState.DEAD || boss.isDying) {
+//			return;
+//		}
 		// Logica specifica: se il boss attacca, i minions scappano
 		boolean bossActive = (boss.getState() == EnemyState.WALKING);
+		float dist = Math.abs(player.position.x - boss.position.x);
+		if (!boss.isActive() && dist < 200 && boss.getState() != EnemyState.DEAD && !boss.isDying) { // 200 è il raggio
+																										// visivo
+			boss.setActive(true);
+			boss.setState(EnemyState.WALKING); // Forza lo stato di movimento
+		}
 		if (boss.getState() == EnemyState.ATTACKING_HIGH || boss.getState() == EnemyState.ATTACKING_LOW
 				|| boss.getState() == EnemyState.ATTACKING_MID) {
 			// Se la hitbox del bastone tocca Thomas e lui non è già morto o appena colpito
-			if (boss.getHitBox().overlaps(player.hurtbox) && player.currentState != Player.State.DEAD) {
-				player.takeHit(15f, this); // Danno consistente dal boss
+			Rectangle bHit = boss.getHitBox();
+			if (bHit != null && bHit.overlaps(player.hurtbox) && player.currentState != Player.State.DEAD) {
+				float contactX = bHit.x + (bHit.width / 2);
+				float contactY = bHit.y + (bHit.height / 2);
+				player.takeHit(15f, this, contactX, contactY); // Danno consistente dal boss
+
 				// Opzionale: aggiungi un piccolo rinculo a Thomas
 				player.position.x += (boss.position.x > player.position.x) ? -10 : 10;
 			}
@@ -217,11 +227,7 @@ public class Level1Screen extends LevelScreen implements Screen {
 				// Applichiamo il danno solo se il boss non è già in animazione di "Hurt"
 				// per evitare che un singolo pugno tolga 10 HP in un colpo solo
 				if (boss.getState() != EnemyState.HURT_HIGH && boss.getState() != EnemyState.HURT_LOW) {
-
-					boss.hit(player,this);
-					GameControlRes.incrementScore(200); // Punti per aver colpito il boss
-
-					// Effetto "Hit Stop": potresti fermare il tempo per 0.05s per dare impatto
+					boss.hit(player, this);
 				}
 			}
 		}
@@ -240,9 +246,6 @@ public class Level1Screen extends LevelScreen implements Screen {
 			// Il Boss è sparito: le scale sono ora accessibili
 			this.startLevelTransition(dt);
 		}
-		// 6. CAMERA E SPAWN
-		updateCamera();
-		handleSpawning(dt);
 	}
 
 	public void draw(float delta) {
@@ -281,12 +284,23 @@ public class Level1Screen extends LevelScreen implements Screen {
 		for (Enemy e : enemies) {
 			e.draw(batch);
 		}
-		
+
 		for (int i = hitEffects.size - 1; i >= 0; i--) {
-		    HitEffect he = hitEffects.get(i);
-		    he.update(dt);
-		    if (!he.active) hitEffects.removeIndex(i);
-		    else he.draw(batch);
+			HitEffect he = hitEffects.get(i);
+			he.update(dt);
+			if (!he.active)
+				hitEffects.removeIndex(i);
+			else
+				he.draw(batch);
+		}
+
+		for (int i = floatingScores.size - 1; i >= 0; i--) {
+			FloatingScore fs = floatingScores.get(i);
+			fs.update(dt);
+			if (!fs.active)
+				floatingScores.removeIndex(i);
+			else
+				fs.draw(batch, font);
 		}
 
 		// AGGIUNGI QUESTO SE MANCA:
@@ -299,7 +313,7 @@ public class Level1Screen extends LevelScreen implements Screen {
 			drawDebugShapes();
 		hudCamera.update();
 		batch.setProjectionMatrix(hudCamera.combined);
-		
+
 		batch.begin();
 		drawUI();
 		batch.end();
@@ -331,39 +345,85 @@ public class Level1Screen extends LevelScreen implements Screen {
 
 	}
 
+	protected void handleSpawning(float dt) {
+		// 1. Limite massimo di nemici a schermo
+		if (enemies.size >= this.levelInfo.getMaxEnemies())
+			return;
+		spawnTimer += dt;
+		if (boss.getState() != EnemyState.WAITING)
+			return;
+
+		if (spawnTimer >= this.levelInfo.getSpawnInteval()) {
+			float spawnOffset = this.levelInfo.getSpawnOffset(); // 160 pixel fuori dallo schermo
+
+			// 2. Scegliamo casualmente se spawnare a sinistra o a destra
+			boolean spawnOnRight = MathUtils.randomBoolean();
+			float spawnX = spawnOnRight ? camera.position.x + spawnOffset : camera.position.x - spawnOffset;
+
+			// 3. Limiti del Livello: Impediamo lo spawn se siamo ai confini della mappa
+			// Se spawnX è fuori dai limiti FIRST_FLOOR_LEFT/RIGHT, annulliamo o correggiamo
+			if (this.levelInfo.isExceedingLevelBegin(spawnX)) // Se spawnX è troppo a destra
+				spawnX = this.levelInfo.getLevelBeginX(); // Evita coordinate negative
+			if (this.levelInfo.isExceedingLevelGoal(spawnX))
+				spawnX = this.levelInfo.getGoalX(); // Limite ipotetico del livello
+
+			// 4. Creazione Nemico (25% KnifeThrower, 75% Gripper)
+			Enemy newEnemy;
+			if (MathUtils.random() < 0.25f) {
+				if (knifeThrowersSpawned < this.levelInfo.getMaxKnifeThrowers()) {
+					newEnemy = new KnifeThrower(spawnX, this.levelInfo.getGroundY());
+					knifeThrowersSpawned++;
+				} else {
+					// Se i KnifeThrower sono finiti, spawna un Gripper normale
+					newEnemy = new Gripper(spawnX, this.levelInfo.getGroundY());
+				}
+
+			} else {
+				newEnemy = new Gripper(spawnX, this.levelInfo.getGroundY());
+			}
+
+			// Importante: orientiamo il nemico verso il giocatore subito
+			newEnemy.facingRight = (newEnemy.position.x < player.position.x);
+			enemies.add(newEnemy);
+			spawnTimer = 0;
+		}
+	}
+
 	@Override
 	public void dispose() {
-		batch.dispose();
+		//batch.dispose();
 		background.dispose();
 		shapeRenderer.dispose();
-		KnifeThrowerRes.dispose();
-		GripperRes.dispose();
-		PlayerRes.dispose();
+		this.whitePixel.dispose();
+//		KnifeThrowerRes.dispose();
+//		GripperRes.dispose();
+//		PlayerRes.dispose();
 	}
 
 	public void startLevelTransition(float dt) {
-		// Se il boss è morto e Thomas raggiunge il bordo sinistro
-		AudioRes.stopMusic(AudioRes.bgm_main_theme);
-		AudioRes.playMusic(AudioRes.bgm_level_completed);
-		if (!boss.isActive() && player.position.x <= LevelConstants.FIRST_FLOOR_LEFT_STAIR + 10) {
-			if (!isLevelComplete) {
-				isLevelComplete = true;
-				player.autoWalking = true; // Thomas prende il controllo automatico
-				player.facingRight = false;
-			}
+		// 1. Innesco della transizione (Boss morto e Thomas alle scale)
+		if (!isLevelComplete && !boss.isActive() && player.position.x <= LevelConstants.FIRST_FLOOR_LEFT_STAIR + 10) {
+			isLevelComplete = true;
+			player.autoWalking = true;
+			player.facingRight = false;
+
+			// Audio eseguito UNA SOLA VOLTA
+			AudioRes.stopMusic(AudioRes.bgm_main_theme);
+			AudioRes.playMusic(AudioRes.bgm_level_completed);
 		}
 
-		// Calcoliamo quanto Thomas è salito rispetto al punto di inizio scala
-		float climbProgress = player.position.y - this.levelInfo.getGroundY();
-		// Iniziamo il Fade Out solo dopo che è salito di almeno 30 pixel
-		if (climbProgress > 30) {
-			transitionTimer += dt; // Incrementiamo il timer per il fade
-		}
-		// Il cambio schermo avviene solo quando Thomas è "uscito" o il fade è totale
-		if (climbProgress > 80 || transitionTimer > 2.5f) {
-			// Logica di cambio piano (es. setScreen(new Level2Screen()))
-			System.out.println("PIANO COMPLETATO!");
-			goToNextFloor();
+		// 2. Gestione progressione
+		if (isLevelComplete) {
+			// Il timer deve avanzare SEMPRE una volta che il livello è completo
+			transitionTimer += dt;
+
+			float climbProgress = player.position.y - this.levelInfo.getGroundY();
+
+			// Usciamo se Thomas è salito abbastanza O se il tempo scade (sicurezza)
+			if (climbProgress > 80 || transitionTimer > 4.0f) {
+				System.out.println("PIANO COMPLETATO!");
+				goToNextFloor();
+			}
 		}
 	}
 
@@ -402,5 +462,11 @@ public class Level1Screen extends LevelScreen implements Screen {
 	public void hide() {
 		// TODO Auto-generated method stub
 
+	}
+
+	@Override
+	public void killAllEnemies() {
+		super.killAllEnemies();
+		if (this.minions != null) this.minions.clear();
 	}
 }

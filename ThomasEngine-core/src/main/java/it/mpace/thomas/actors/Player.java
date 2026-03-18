@@ -56,29 +56,26 @@ public class Player {
 		this.screen = s;
 	}
 
-	public void takeHit(float damage, LevelScreen level) {
-		if (currentState == State.DEAD)
-			return;
-		
-		// Se eravamo presi, ci liberiamo per il dolore del colpo
+	public void takeHit(float damage, LevelScreen level, float hitX, float hitY) {
+		//System.out.println("Player hit with damage: " + damage+" Level: "+levelInfo.getFloor()+" LevelScreen: "+level);
+	    if (currentState == State.DEAD) return;
+
+	    // Se eravamo presi, ci liberiamo
 	    if (currentState == State.GRABBED) {
 	        this.struggleCount = 0; 
-	        // Notifica ai nemici vicini di staccarsi (opzionale, lo gestiremo nel loop)
 	    }
+
+	    // Usiamo le coordinate passate per la scintilla ROSSA
+	    level.hitEffects.add(new HitEffect(hitX, hitY, PlayerRes.hitRedFrame));
 	    
-	 // Calcola il punto dell'impatto (al centro della hurtbox di Thomas)
-	    float hitX = hurtbox.x + hurtbox.width / 2f;
-	    float hitY = hurtbox.y + hurtbox.height / 2f;
+	    // Aggiungiamo anche il punteggio fluttuante di "danno" se vuoi (opzionale)
+	    // level.floatingScores.add(new FloatingScore(hitX, hitY, (int)damage));
 
-	    // Aggiunge la scintilla ROSSA
-	    screen.hitEffects.add(new HitEffect(hitX, hitY, PlayerRes.hitRedFrame));
-
-		GameControlRes.decrementEnergy(damage);
-		this.currentState = State.HURT; // Usiamo l'animazione hurt
-		this.stateTime = 0;
-		this.hurtTimer = HURT_DURATION;
-		AudioRes.playSound(AudioRes.playerHurt);
-
+	    GameControlRes.decrementEnergy(damage);
+	    this.currentState = State.HURT;
+	    this.stateTime = 0;
+	    this.hurtTimer = HURT_DURATION;
+	    AudioRes.playSound(AudioRes.playerHurt);
 	}
 
 	public void triggerDeath() {
@@ -117,8 +114,8 @@ public class Player {
 			}
 			return;
 		}
-		// 3. AUTO-WALKING (TRANSIZIONI LIVELLO)
-		if (autoWalking) {
+		// 3. AUTO-WALKING (TRANSIZIONI LIVELLO) //TODO capire se è meglio utilizzare uno switch case o se è più chiaro così, magari con dei metodi dedicati per ogni piano
+		if (autoWalking && levelInfo.getFloor() == 1) {
 			if (position.x > this.levelInfo.getGoalX()) {
 				currentState = State.WALKING;
 				facingRight = false;
@@ -129,6 +126,16 @@ public class Player {
 				position.y += speed * 0.4f * deltaTime;
 			}
 			return;
+		}
+		if (autoWalking && levelInfo.getFloor() == 2) {
+		    if (position.x < levelInfo.getGoalX()) {
+		        position.x += speed * 0.5f * deltaTime; // Cammina a destra
+		    } else {
+		        currentState = State.CLIMBING_STAIRS;
+		        position.x += speed * 0.3f * deltaTime;
+		        position.y += speed * 0.4f * deltaTime; // SALE in verticale
+		    }
+		    return;
 		}
 		// 4. FISICA DI CADUTA E GRAVITÀ (SALTO)
 		if ((position.y > this.levelInfo.getGroundY() || velocityY > 0) && currentState != State.DEAD) {
@@ -215,8 +222,9 @@ public class Player {
 
 		if (this.screen.getBoss().isActive()) {
 			//System.out.println("BOSS ATTIVO - LIMITI IMPOSTATI");
-			if (this.position.x < this.screen.getBoss().position.x + 10) {
-				this.position.x = this.screen.getBoss().position.x + 10;
+			
+			if (this.screen.isExceedingBoss(this.position.x)) {
+				this.position.x = this.screen.getBoss().position.x + this.levelInfo.getBossDistance();
 			}
 		} else if (this.levelInfo.isExceedingLevelGoal(this.position.x)) {
 			this.screen.startLevelTransition(deltaTime);
@@ -460,6 +468,10 @@ public class Player {
 
 	public void resetStateTime() {
 		this.stateTime = 0;
+	}
+	
+	public void killAllEnemies() {
+		this.screen.killAllEnemies();
 	}
 
 	public void dispose() {

@@ -8,16 +8,27 @@ import it.mpace.thomas.LevelConstants;
 import it.mpace.thomas.res.GripperRes;
 import it.mpace.thomas.screen.LevelScreen;
 
-public class Gripper extends Enemy {
+public class Gripper extends GrabbingEnemy {
 
-	public boolean isGrabbedFromRight;
+	
 	// private final float APPROACH_DISTANCE = 100;
 
 	public EnemyState state = EnemyState.WALKING;
+	private Rectangle hitbox = new Rectangle(0, 0, 0, 0);
 
 	public Gripper(float x, float y) {
-		super(x, y, 1); // Chiama il costruttore di Enemy che inizializza position e hurtbox
+		super(x, y); // Chiama il costruttore di Enemy che inizializza position e hurtbox
 		this.speed = LevelConstants.FIRST_FLOOR_GRIPPER_SPEED;
+	}
+
+	@Override
+	public int getHitScoreValue() {
+		return this.getDieScoreValue();
+	}
+
+	@Override
+	public int getDieScoreValue() {
+		return 100;
 	}
 
 	@Override
@@ -91,6 +102,7 @@ public class Gripper extends Enemy {
 		super.hit(p, level); // Imposta isDying = true e disabilita hurtbox
 		this.state = EnemyState.DYING; // <--- Forza lo stato interno
 		this.stateTime = 0; // Reset timer per l'animazione di morte
+		
 	}
 
 	@Override
@@ -137,6 +149,6 @@ public class Gripper extends Enemy {
 
 	@Override
 	public Rectangle getHitBox() {
-		return new Rectangle(0, 0, 0, 0);
+		return hitbox;
 	}
 }

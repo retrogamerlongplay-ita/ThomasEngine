@@ -7,8 +7,10 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 
 import it.mpace.thomas.res.AudioRes;
+import it.mpace.thomas.res.GameControlRes;
 import it.mpace.thomas.res.PlayerRes;
 import it.mpace.thomas.screen.LevelScreen;
+import it.mpace.thomas.sprite.FloatingScore;
 import it.mpace.thomas.sprite.HitEffect;
 
 public abstract class Enemy {
@@ -21,6 +23,7 @@ public abstract class Enemy {
 	public Rectangle hurtbox;
 	public boolean isDying = false;
 	public int hp = 1; // Default 1 colpo
+	public EnemyState state;
 
 	public enum EnemyState {
 		WAITING, WALKING, APPROACHING, GRABBING, DYING,DEAD, ATTACKING, RETREATING, HURT, FLEEING, ATTACKING_HIGH,
@@ -40,17 +43,24 @@ public abstract class Enemy {
 		float contactY = MathUtils.clamp(p.hitbox.y + p.hitbox.height / 2, hurtbox.y, hurtbox.y + hurtbox.height);
 	    // 2. Creiamo l'effetto visivo (usando la yellow per i nemici)
 	    level.hitEffects.add(new HitEffect(contactX, contactY, PlayerRes.hitYellowFrame));
-
+	    int points = 0;
+	    
+	    
 		hp--;
 		if (hp <= 0) {
 			this.isDying = true;
 			this.velocityY = 350f;
 			this.stateTime = 0;
 			this.hurtbox.set(0, 0, 0, 0);
+			points=getDieScoreValue();
 		} else {
 			// Se ha ancora HP, resettiamo lo stateTime per l'animazione di hurt
+			points=getHitScoreValue();
 			this.stateTime = 0;
 		}
+		
+		GameControlRes.incrementScore(points);
+	    level.floatingScores.add(new FloatingScore(position.x, position.y + 60, points));
 	}
 
 	protected void updateDyingPhysics(float dt) {
@@ -75,6 +85,10 @@ public abstract class Enemy {
 	public abstract Rectangle getHitBox();
 	
 	public abstract EnemyState getState();
+	
+	public abstract void setState(EnemyState newState);
+	public abstract int getHitScoreValue();
+	public abstract int getDieScoreValue();
 
 	public int getHp() {
 		return this.hp;
@@ -102,6 +116,9 @@ public abstract class Enemy {
 	public void setActive(boolean active) {
 		this.active = active;
 	}
+	
+	
+		
 
 	// Metodo "gancio" per ThomasMain: solo i Gripper lo sovrascriveranno
 	public boolean canGrabPlayer() {

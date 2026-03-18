@@ -10,10 +10,15 @@ import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator.FreeTypeFontParameter;
 
 import it.mpace.thomas.res.AudioRes;
+import it.mpace.thomas.res.BoomerangThrowerRes;
+import it.mpace.thomas.res.DragonRes;
+import it.mpace.thomas.res.ExplodingBallRes;
 import it.mpace.thomas.res.GripperRes;
 import it.mpace.thomas.res.KnifeThrowerRes;
 import it.mpace.thomas.res.PlayerRes;
+import it.mpace.thomas.res.SnakeRes;
 import it.mpace.thomas.res.StickFighterRes;
+import it.mpace.thomas.res.TomTomRes;
 import it.mpace.thomas.screen.MainMenuScreen;
 
 public class ThomasMain extends Game {
@@ -30,7 +35,12 @@ public class ThomasMain extends Game {
 		GripperRes.load();
 		KnifeThrowerRes.load();
 		StickFighterRes.load();
+		DragonRes.load();
+		SnakeRes.load();
+		TomTomRes.load();
+		ExplodingBallRes.load();
 		AudioRes.load();
+		BoomerangThrowerRes.load();
 		loadFonts();
 		setScreen(new MainMenuScreen(this));
 	}
