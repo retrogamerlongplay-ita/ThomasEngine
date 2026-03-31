@@ -11,14 +11,20 @@ import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator.FreeTypeFont
 
 import it.mpace.thomas.res.AudioRes;
 import it.mpace.thomas.res.BoomerangThrowerRes;
+import it.mpace.thomas.res.ButterflyRes;
 import it.mpace.thomas.res.DragonRes;
 import it.mpace.thomas.res.ExplodingBallRes;
+import it.mpace.thomas.res.GiantRes;
 import it.mpace.thomas.res.GripperRes;
+import it.mpace.thomas.res.HunchbackRes;
 import it.mpace.thomas.res.KnifeThrowerRes;
+import it.mpace.thomas.res.MrXRes;
 import it.mpace.thomas.res.PlayerRes;
 import it.mpace.thomas.res.SnakeRes;
 import it.mpace.thomas.res.StickFighterRes;
 import it.mpace.thomas.res.TomTomRes;
+import it.mpace.thomas.res.TrapdoorRes;
+import it.mpace.thomas.res.SylviaRes;
 import it.mpace.thomas.screen.MainMenuScreen;
 
 public class ThomasMain extends Game {
@@ -30,7 +36,6 @@ public class ThomasMain extends Game {
 	public void create() {
 		ThomasCredits.printout();
 		batch = new SpriteBatch();
-		
 		PlayerRes.load();
 		GripperRes.load();
 		KnifeThrowerRes.load();
@@ -41,6 +46,13 @@ public class ThomasMain extends Game {
 		ExplodingBallRes.load();
 		AudioRes.load();
 		BoomerangThrowerRes.load();
+		GiantRes.load();
+		TrapdoorRes.load();
+		ButterflyRes.load();
+		HunchbackRes.load();
+		MrXRes.load();
+		// Sylvia resources for intermezzi
+		SylviaRes.load();
 		loadFonts();
 		setScreen(new MainMenuScreen(this));
 	}

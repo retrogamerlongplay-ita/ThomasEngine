@@ -38,7 +38,7 @@ public abstract class Enemy {
 	}
 
 	public void hit(Player p, LevelScreen level) {
-		AudioRes.playSound(AudioRes.playerHurt);
+		AudioRes.playSound(AudioRes.playerHurtSound);
 		float contactX = MathUtils.clamp(p.hitbox.x + p.hitbox.width / 2, hurtbox.x, hurtbox.x + hurtbox.width);
 		float contactY = MathUtils.clamp(p.hitbox.y + p.hitbox.height / 2, hurtbox.y, hurtbox.y + hurtbox.height);
 	    // 2. Creiamo l'effetto visivo (usando la yellow per i nemici)

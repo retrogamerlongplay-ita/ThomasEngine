@@ -74,16 +74,18 @@ public class Level1Screen extends LevelScreen implements Screen {
 		if (this.player.position.x > this.levelInfo.getRespawnX()) {
 			if (this.player.currentState != Player.State.WALKING) {
 				this.player.currentState = Player.State.WALKING;
+				//AudioRes.playSound(AudioRes.walk);
 			}
 			this.player.facingRight = false;
 			this.player.position.x -= GameControlRes.PLAYER_SPEED * 0.8f * dt;
 		} else {
+			AudioRes.stopSound(AudioRes.introWalkSound);
 			// FASE 2: Thomas si ferma, aspettiamo che il timer scada
 			this.player.currentState = Player.State.IDLE;
 			this.introTimer += dt;
 			if (this.introTimer >= READY_DURATION) {
 				introActive = false; // Restituiamo il controllo al giocatore
-				AudioRes.stopMusic(AudioRes.bgm_get_ready);
+				//AudioRes.stopMusic(AudioRes.bgm_get_ready);
 				AudioRes.playMusic(AudioRes.bgm_main_theme);
 			}
 		}
@@ -438,7 +440,9 @@ public class Level1Screen extends LevelScreen implements Screen {
 	@Override
 	public void show() {
 		player.position.x = this.levelInfo.getLevelBeginX(); // per la intro
-		AudioRes.playMusic(AudioRes.bgm_get_ready);
+		//AudioRes.playMusic(AudioRes.bgm_get_ready);
+		//AudioRes.playMusic(AudioRes.bgm_intro_walk);
+		AudioRes.loopSound(AudioRes.introWalkSound);
 		GameInput inputProcessor = new GameInput(player);
 		Gdx.input.setInputProcessor(inputProcessor);
 	}

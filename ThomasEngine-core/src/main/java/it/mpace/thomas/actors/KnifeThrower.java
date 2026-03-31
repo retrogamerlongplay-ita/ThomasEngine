@@ -25,12 +25,10 @@ public class KnifeThrower extends Enemy {
 	private final float RETREAT_DISTANCE = 150f;
 	private final float RETREAT_SPEED_MULT = 1.3f;
 
-	private int retreatCount = 0;
-	private final int MAX_RETREATS = 2; // Dopo 2 ritirate, scappa per sempre
+	//private int retreatCount = 0;
+	//private final int MAX_RETREATS = 2; // Dopo 2 ritirate, scappa per sempre
 	private boolean fleeingForever = false; // Flag per la fuga definitiva
 	private final float HURT_DURATION = 0.15f;
-
-	private Knife activeKnife = null;
 	
 	private Rectangle hitbox = new Rectangle(0, 0, 0, 0);
 

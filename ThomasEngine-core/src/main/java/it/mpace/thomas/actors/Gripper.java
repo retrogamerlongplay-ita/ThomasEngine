@@ -10,8 +10,7 @@ import it.mpace.thomas.screen.LevelScreen;
 
 public class Gripper extends GrabbingEnemy {
 
-	
-	// private final float APPROACH_DISTANCE = 100;
+	private final float APPROACH_DISTANCE = 100f;
 
 	public EnemyState state = EnemyState.WALKING;
 	private Rectangle hitbox = new Rectangle(0, 0, 0, 0);
@@ -33,6 +32,7 @@ public class Gripper extends GrabbingEnemy {
 
 	@Override
 	public void update(float deltaTime, Player player) {
+		float playerDistance = Math.abs(position.x - player.position.x);
 		// Se lo stato è DYING, esegui solo la fisica di caduta e ESCI
 		if (state == EnemyState.DYING || this.isDying) {
 			updateDyingPhysics(deltaTime);
@@ -81,7 +81,11 @@ public class Gripper extends GrabbingEnemy {
 					position.x -= speed * deltaTime;
 					facingRight = false;
 				}
-				state = EnemyState.WALKING;
+				if (playerDistance < APPROACH_DISTANCE) {
+					state = EnemyState.APPROACHING;
+				} else {
+					state = EnemyState.WALKING;
+				}
 			} else {
 				// È arrivato in posizione di "abbraccio"
 				// Se Thomas non è già occupato da un altro Gripper su questo lato, GRABBA!
@@ -102,7 +106,7 @@ public class Gripper extends GrabbingEnemy {
 		super.hit(p, level); // Imposta isDying = true e disabilita hurtbox
 		this.state = EnemyState.DYING; // <--- Forza lo stato interno
 		this.stateTime = 0; // Reset timer per l'animazione di morte
-		
+
 	}
 
 	@Override
@@ -114,12 +118,15 @@ public class Gripper extends GrabbingEnemy {
 			switch (state) {
 			case GRABBING:
 				currentFrame = GripperRes.grabAnim.getKeyFrame(stateTime);
+				//System.out.println("draw GRABBING");
 				break;
 			case APPROACHING:
 				currentFrame = GripperRes.approachAnim.getKeyFrame(stateTime);
+				//System.out.println("draw APPROACHING");
 				break;
 			default:
 				currentFrame = GripperRes.walkAnim.getKeyFrame(stateTime);
+				//System.out.println("draw WALKING");
 				break;
 			}
 		}

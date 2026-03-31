@@ -75,7 +75,7 @@ public class Player {
 	    this.currentState = State.HURT;
 	    this.stateTime = 0;
 	    this.hurtTimer = HURT_DURATION;
-	    AudioRes.playSound(AudioRes.playerHurt);
+	    AudioRes.playSound(AudioRes.playerHurtSound);
 	}
 
 	public void triggerDeath() {
@@ -115,7 +115,7 @@ public class Player {
 			return;
 		}
 		// 3. AUTO-WALKING (TRANSIZIONI LIVELLO) //TODO capire se è meglio utilizzare uno switch case o se è più chiaro così, magari con dei metodi dedicati per ogni piano
-		if (autoWalking && levelInfo.getFloor() == 1) {
+		if (autoWalking && (levelInfo.getFloor() == 1||levelInfo.getFloor() == 3)) {
 			if (position.x > this.levelInfo.getGoalX()) {
 				currentState = State.WALKING;
 				facingRight = false;
@@ -127,7 +127,7 @@ public class Player {
 			}
 			return;
 		}
-		if (autoWalking && levelInfo.getFloor() == 2) {
+		if (autoWalking && (levelInfo.getFloor() == 2||levelInfo.getFloor() == 4)) {
 		    if (position.x < levelInfo.getGoalX()) {
 		        position.x += speed * 0.5f * deltaTime; // Cammina a destra
 		    } else {
