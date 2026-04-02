@@ -6,6 +6,8 @@
 - Sylvia actor implemented
 - Level 5 hug sequence implemented
 - RopeFall sprite implemented
+- Final fade out implemented
+- Final Screen passage to GameoverScreen or NameEntryScreen implemented
 
 ### 0.0.32
 - Butterfly explosion implemented

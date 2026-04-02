@@ -23,9 +23,7 @@ public final class ThomasCredits {
  * TODO:
  * - Sequenza introduttiva attract mode (rapimento Silvia)
  * - Movimento verticale/rotatorio delle Butterfly (da rivedere sull'originale)
- * - Bilanciamento dello spawning dei nemici
- * - Miglioramento HUD rappresentazione piani
  * - Hunchback se colpito in alto (calcio o pugno perde la testa scompare e riappare
  * - Miglioramento del comportamento di MrX
- * - Sequenza finale
+ * - Bilanciamento dello spawning dei nemici
 */

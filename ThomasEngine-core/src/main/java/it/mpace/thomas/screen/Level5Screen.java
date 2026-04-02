@@ -4,6 +4,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
@@ -27,6 +28,7 @@ import it.mpace.thomas.actors.TomTom;
 import it.mpace.thomas.data.LevelInfo;
 import it.mpace.thomas.res.AudioRes;
 import it.mpace.thomas.res.GameControlRes;
+import it.mpace.thomas.res.SylviaRes;
 import it.mpace.thomas.sprite.Boomerang;
 import it.mpace.thomas.sprite.FloatingScore;
 import it.mpace.thomas.sprite.HitEffect;
@@ -45,6 +47,12 @@ public class Level5Screen extends LevelScreen implements Screen {
 
 	private RopeFall rope;
 	private boolean ropesSpawned = false;
+
+	private boolean hideWorld = false;
+	private float worldFade = 0f;
+	private float hugAlpha = 0f;
+	
+	private boolean endingDone = false;
 
 	public Level5Screen(ThomasMain g) {
 		super(g);
@@ -239,7 +247,7 @@ public class Level5Screen extends LevelScreen implements Screen {
 				sylviaFreed = true;
 
 				// 1) STANDING (= si alza dalla sedia)
-				sylvia.x+=10;
+				sylvia.x += 10;
 				sylvia.state = Sylvia.State.STANDING;
 				sylvia.stateTime = 0;
 
@@ -254,8 +262,8 @@ public class Level5Screen extends LevelScreen implements Screen {
 				float rx = sylvia.x;
 				float ry = sylvia.y + 40;
 
-				rope = new RopeFall(rx , ry);
-				
+				rope = new RopeFall(rx, ry);
+
 			}
 
 			this.startLevelTransition(dt);
@@ -385,7 +393,7 @@ public class Level5Screen extends LevelScreen implements Screen {
 	public void update(float dt) {
 		super.update(dt);
 
-		if (sylviaFreed && sylvia.state == Sylvia.State.STANDING && rope.getLanded() ) {
+		if (sylviaFreed && sylvia.state == Sylvia.State.STANDING && rope.getLanded()) {
 
 			if (Math.abs(player.position.x - sylvia.x) < 120f) {
 				sylvia.state = Sylvia.State.RUNNING;
@@ -395,7 +403,11 @@ public class Level5Screen extends LevelScreen implements Screen {
 		sylvia.update(dt, player.position.x);
 
 		if (sylvia.state == Sylvia.State.HUGGING && !hugSequenceDone) {
+			hugAlpha = 0f; // parte trasparente
 			hugSequenceDone = true;
+
+			hideWorld = true;
+			worldFade = 0f;
 
 			player.currentState = Player.State.IDLE;
 			player.position.x = sylvia.x - 10;
@@ -407,7 +419,17 @@ public class Level5Screen extends LevelScreen implements Screen {
 
 			// puoi iniziare un fadeout
 			isLevelComplete = true;
+			GameControlRes.timeElapsing=false;
 			this.player.setPlayerVisible(false);
+			this.player.hurtbox = new Rectangle(0,0,0,0);
+		}
+
+		
+
+		if (sylvia.state == Sylvia.State.HUGGING) {
+			hugAlpha += dt * 0.09f; // velocità fade: 1.2 secondi
+			if (hugAlpha > 1f)
+				hugAlpha = 1f;
 		}
 
 		if (rope != null) {
@@ -415,14 +437,55 @@ public class Level5Screen extends LevelScreen implements Screen {
 //			if (!rope.getLanded())
 //				rope = null;
 		}
+
+		if (hideWorld) {
+			worldFade += dt * 0.09f; // velocità fade-out
+			if (worldFade > 1f)
+				worldFade = 1f;
+		}
+		
+		// Quando il frame dell’abbraccio è completamente visibile
+		if (sylvia.state == Sylvia.State.HUGGING && hugAlpha >= 1f && !endingDone) {
+
+		    endingDone = true;  // aggiungi questa variabile in Level5Screen
+
+		    // SALVA IL RECORD SE È ALTO
+		    GameControlRes.saveHighScore((int)GameControlRes.score);
+
+		    // Se è un nuovo High Score → vai alla schermata di inserimento nome
+		    if (GameControlRes.isHighScore((int)GameControlRes.score)) {
+		        game.setScreen(new NameEntryScreen(game, (int)GameControlRes.score));
+		        return;
+		    }
+
+		    // Altrimenti → normalissimo Game Over screen
+		    game.setScreen(new GameOverScreen(game));
+		    return;
+		}
+
+
 	}
 
-	private void goToNextFloor() {
-		player.autoWalking = false;
-		game.setScreen(new Level4Screen(this.game)); // Dovrai creare questa classe
-	}
+//	private void goToNextFloor() {
+//		player.autoWalking = false;
+//		game.setScreen(new Level4Screen(this.game)); // Dovrai creare questa classe
+//	}
 
 	public void draw(float delta) {
+
+		if (hideWorld) {
+
+			// 1. Disegna comunque il mondo, MA con alpha scalata
+			float fadeAlpha = 1f - worldFade;
+			if (fadeAlpha < 0f)
+				fadeAlpha = 0f;
+
+			batch.setColor(1f, 1f, 1f, fadeAlpha);
+
+			// → qui NON interrompiamo il draw, perché vogliamo che
+			// il mondo venga disegnato con trasparenza
+		}
+
 		// Disegna sfondo, Thomas, Minions e infine il Boss
 		float dt = Math.min(delta, 1 / 60f); // Math.min(Gdx.graphics.getDeltaTime(), 1 / 60f);
 
@@ -484,6 +547,7 @@ public class Level5Screen extends LevelScreen implements Screen {
 			else
 				fs.draw(batch, font);
 		}
+		batch.setColor(1f, 1f, 1f, 1f);
 
 		sylvia.draw(batch);
 
@@ -522,6 +586,31 @@ public class Level5Screen extends LevelScreen implements Screen {
 			batch.draw(whitePixel, 0, 0, 256, 256);
 			batch.setColor(Color.WHITE);
 			batch.end();
+		}
+
+		if (hideWorld && worldFade >= 1f) {
+
+			// Cancella eventuale residuo
+			ScreenUtils.clear(0, 0, 0, 1);
+
+			batch.setProjectionMatrix(hudCamera.combined);
+			batch.begin();
+
+			// Calcola centro
+			TextureRegion hug = SylviaRes.hugframe;
+			float w = hug.getRegionWidth();
+			float h = hug.getRegionHeight();
+
+			float cx = 128 - w / 2;
+			float cy = 128 - h / 2;
+
+			// fade-in dell’abbraccio (hugAlpha lo hai già)
+			batch.setColor(1f, 1f, 1f, hugAlpha);
+			batch.draw(hug, cx, cy, w, h);
+			batch.setColor(1f, 1f, 1f, 1f);
+
+			batch.end();
+			return; // IMPORTANTE: impedisce al resto di disegnarsi
 		}
 
 	}

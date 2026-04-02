@@ -16,6 +16,7 @@ public class GameControlRes {
 	public static float gameTime = MAX_TIME;
 	public static final float TIME_SPEED = 10f; // Quanto velocemente cala (es. 50 unità al secondo)
 	public static final float PLAYER_SPEED = 40f;
+	public static boolean timeElapsing = true;
 
 	public static boolean isMuted = false;
 
@@ -78,7 +79,9 @@ public class GameControlRes {
 	}
 
 	public static void decrementTime() {
-		GameControlRes.gameTime--;
+		if (timeElapsing) {
+			GameControlRes.gameTime--;
+		}
 	}
 
 	public static void toggleMute() {
@@ -97,15 +100,15 @@ public class GameControlRes {
 	public static void toggleDebug() {
 		debugMode = !debugMode;
 	}
-	
+
 	public static void toggleFullscreen() {
-	    if (Gdx.graphics.isFullscreen()) {
-	        // Se è già fullscreen, torna in finestra
-	        Gdx.graphics.setWindowedMode(800, 600); 
-	    } else {
-	        // Altrimenti attiva il fullscreen sul monitor corrente
-	        Gdx.graphics.setFullscreenMode(Gdx.graphics.getDisplayMode());
-	    }
+		if (Gdx.graphics.isFullscreen()) {
+			// Se è già fullscreen, torna in finestra
+			Gdx.graphics.setWindowedMode(800, 600);
+		} else {
+			// Altrimenti attiva il fullscreen sul monitor corrente
+			Gdx.graphics.setFullscreenMode(Gdx.graphics.getDisplayMode());
+		}
 	}
 
 	public static void checkAndSaveScore(int score, String name) {
