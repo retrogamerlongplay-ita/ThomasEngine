@@ -97,6 +97,16 @@ public class GameControlRes {
 	public static void toggleDebug() {
 		debugMode = !debugMode;
 	}
+	
+	public static void toggleFullscreen() {
+	    if (Gdx.graphics.isFullscreen()) {
+	        // Se è già fullscreen, torna in finestra
+	        Gdx.graphics.setWindowedMode(800, 600); 
+	    } else {
+	        // Altrimenti attiva il fullscreen sul monitor corrente
+	        Gdx.graphics.setFullscreenMode(Gdx.graphics.getDisplayMode());
+	    }
+	}
 
 	public static void checkAndSaveScore(int score, String name) {
 		com.badlogic.gdx.Preferences prefs = Gdx.app.getPreferences("ThomasScores");

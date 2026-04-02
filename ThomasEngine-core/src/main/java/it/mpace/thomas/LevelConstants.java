@@ -98,14 +98,14 @@ public class LevelConstants {
 	public static final float SPAWN_INTERVAL_FORTH_FLOOR = 2.5f;
 	public final static int FORTH_FLOOR_BOSS_DISTANCE = -10;
 	
-	public final static int BUTTERFLY_HOLE_1_X = 301;
-	public final static int BUTTERFLY_HOLE_1_Y = 780;
-	public final static int BUTTERFLY_HOLE_2_X = 501;
-	public final static int BUTTERFLY_HOLE_2_Y = 750;
-	public final static int BUTTERFLY_HOLE_3_X = 748;
-	public final static int BUTTERFLY_HOLE_3_Y = 720;
+	public final static int BUTTERFLY_HOLE_1_X = 298;
+	public final static int BUTTERFLY_HOLE_1_Y = 803;
+	public final static int BUTTERFLY_HOLE_2_X = 504;
+	public final static int BUTTERFLY_HOLE_2_Y = 772;
+	public final static int BUTTERFLY_HOLE_3_X = 746;
+	public final static int BUTTERFLY_HOLE_3_Y = 715;
 	public final static int BUTTERFLY_HOLE_4_X = 922;
-	public final static int BUTTERFLY_HOLE_4_Y = 780;
+	public final static int BUTTERFLY_HOLE_4_Y = 803;
 	
 	
 
