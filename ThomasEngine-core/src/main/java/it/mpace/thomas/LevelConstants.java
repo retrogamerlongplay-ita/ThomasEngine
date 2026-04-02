@@ -115,7 +115,7 @@ public class LevelConstants {
 
 		public final static int FIFTH_FLOOR_TRAPDOOR_X = 1720;
 		public final static int FIFTH_FLOOR_TRAPDOOR_Y = 664;
-		public final static int FIFTH_FLOOR_LEFT_STAIR = 170;
+		public final static int FIFTH_FLOOR_LEFT_STAIR = 90;
 		public final static int FIFTH_FLOOR_RIGHT_START = 1680;
 		public final static int FIFTH_FLOOR_RIGHT_HOLE = 1710;
 		public final static int FIFTH_FLOOR_Y = 740;

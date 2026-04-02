@@ -41,6 +41,7 @@ public class Player {
 	public Rectangle hurtbox;
 	private float hurtTimer = 0;
 	private LevelScreen screen = null;
+	private boolean playerVisible = true;
 
 	// Nella classe Player
 	public boolean autoWalking = false;
@@ -378,6 +379,7 @@ public class Player {
 	}
 
 	public void draw(SpriteBatch batch) {
+		if(!this.playerVisible) return;
 		TextureRegion keyFrame;
 		// Applichiamo lo shakeOffset solo alla X nel momento del disegno
 		// Scegliamo il frame in base allo stato
@@ -477,4 +479,14 @@ public class Player {
 	public void dispose() {
 		PlayerRes.dispose();
 	}
+
+	public boolean isPlayerVisible() {
+		return playerVisible;
+	}
+
+	public void setPlayerVisible(boolean playerVisible) {
+		this.playerVisible = playerVisible;
+	}
+	
+	
 }
