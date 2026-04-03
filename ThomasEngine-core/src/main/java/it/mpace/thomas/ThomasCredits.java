@@ -5,7 +5,7 @@ public final class ThomasCredits {
 	// prevent instantiation
 	private ThomasCredits() {}
 	
-	public static final String VER = "0.0.32";
+	public static final String VER = "0.0.34";
 	public static final String AUTHOR = "Matteo Pace";
 	public static final String GAME_ENGINE_TITLE = "THOMAS";
 	public static final String TITLE = "Kung Fu Master";

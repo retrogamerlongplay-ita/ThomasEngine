@@ -4,8 +4,8 @@ $excludeFiles = @("ThomasCredits") # Aggiungi qui altre classi puramente testual
 # Definizione dei due gruppi
 $systemClasses = @("ThomasMain", "GameInput","LevelConstants","LevelInfo","ScoreEntity","ThomasControllerListener")
 $screenClasses = @("LevelScreen", "Level1Screen","Level2Screen","Level3Screen","Level4Screen","Level5Screen","GameOverScreen","HighScoreScreen","IntermissionLevel2Screen","IntermissionLevel4Screen","IntroLetterScreen","NameEntryScreen", "MainMenuScreen")
-$entitiesClasses = @("BoomerangThrower", "Butterfly","Dragon","Enemy","ExplodingBall","FallingHazard","Giant","GrabbingEnemy","Gripper","Hunchback","KnifeThrower","MrX", "Player","Snake","StickFighter","TomTom")
-$spriteResClasses =@("Boomerang", "Crow","FloatingScore","HitEffect","Knife","MagicFlame","PotProjectile","Trapdoor","AudioRes","BoomerangThrowerRes","ButterflyRes","DragonRes", "ExplodingBallRes","GiantRes","GripperRes","HunchbackRes","KnifeThrowerRes","MrXRes", "PlayerRes","SnakeRes","StickFighterRes","SylviaRes","TomTomRes","TrapdoorRes")
+$entitiesClasses = @("BoomerangThrower", "Butterfly","Dragon","Enemy","ExplodingBall","FallingHazard","Giant","GrabbingEnemy","Gripper","Hunchback","KnifeThrower","MrX", "Player","Snake","StickFighter","Sylvia","TomTom")
+$spriteResClasses =@("Boomerang", "Crow","FloatingScore","HeadProjectile","HitEffect","Knife","MagicFlame","PotProjectile","RopeFall","Trapdoor","AudioRes","BoomerangThrowerRes","ButterflyRes","DragonRes", "ExplodingBallRes","GiantRes","GripperRes","HunchbackRes","KnifeThrowerRes","MrXRes", "PlayerRes","SnakeRes","StickFighterRes","SylviaRes","TomTomRes","TrapdoorRes")
 
 # Se una classe non è in $systemClasses, andrà nel secondo file (Entities)
 
@@ -39,5 +39,5 @@ Export-Classes $screenClasses $outputScreen $true
 Export-Classes $entitiesClasses $outputEntities $true
 Export-Classes $spriteResClasses $outputSpriteRes $true
 
-Write-Host "Snapshot completato! Creati $outputSystem, $outputScreen e $outputEntities" -ForegroundColor Green
+Write-Host "Snapshot completato! Creati $outputSystem, $outputScreen, $outputSpriteRes e $outputEntities" -ForegroundColor Green
 pause

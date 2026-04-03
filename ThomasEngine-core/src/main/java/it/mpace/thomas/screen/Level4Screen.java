@@ -27,6 +27,7 @@ import it.mpace.thomas.res.AudioRes;
 import it.mpace.thomas.res.GameControlRes;
 import it.mpace.thomas.sprite.Crow;
 import it.mpace.thomas.sprite.FloatingScore;
+import it.mpace.thomas.sprite.HeadProjectile;
 import it.mpace.thomas.sprite.HitEffect;
 import it.mpace.thomas.sprite.Knife;
 import it.mpace.thomas.sprite.MagicFlame;
@@ -37,6 +38,7 @@ public class Level4Screen extends LevelScreen implements Screen {
 	private Array<Enemy> minions; // Solo Gripper e KnifeThrower
 	public Array<Crow> crows = new Array<>();
 	public Array<MagicFlame> flames = new Array<>();
+	public Array<HeadProjectile> headProjectiles = new Array<>();
 	Trapdoor trapdoor; // La botola all'inizio del livello
 
 	private float[] holesX = { LevelConstants.BUTTERFLY_HOLE_1_X, LevelConstants.BUTTERFLY_HOLE_2_X,
@@ -375,11 +377,19 @@ public class Level4Screen extends LevelScreen implements Screen {
 
 	@Override
 	public void update(float dt) {
-
 		super.update(dt);
 		this.handleCrows(dt);
 		this.handleFlames(dt);
+		this.handleHeads(dt);
+	}
 
+	private void handleHeads(float dt) {
+		for (int i = headProjectiles.size - 1; i >= 0; i--) {
+			HeadProjectile h = headProjectiles.get(i);
+			h.update(dt);
+			if (!h.active)
+				headProjectiles.removeIndex(i);
+		}
 	}
 
 	private void goToNextFloor() {
@@ -439,6 +449,10 @@ public class Level4Screen extends LevelScreen implements Screen {
 
 		for (MagicFlame f : flames) {
 			f.draw(batch);
+		}
+
+		for (HeadProjectile h : headProjectiles) {
+			h.draw(batch);
 		}
 
 		// Disegna i frammenti del vaso (esplosione) solo in Level2

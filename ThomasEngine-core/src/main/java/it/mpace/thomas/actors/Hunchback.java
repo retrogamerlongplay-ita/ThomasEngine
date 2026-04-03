@@ -9,110 +9,208 @@ import it.mpace.thomas.res.HunchbackRes;
 import it.mpace.thomas.screen.Level4Screen;
 import it.mpace.thomas.screen.LevelScreen;
 import it.mpace.thomas.sprite.Crow;
+import it.mpace.thomas.sprite.HeadProjectile;
 import it.mpace.thomas.sprite.MagicFlame;
 
 public class Hunchback extends Enemy {
 
-	private float attackTimer = 0;
+	private float attackTimer = 0f;
 	private final float ATTACK_COOLDOWN = 2.0f;
+
 	private EnemyState currentState = EnemyState.WAITING;
+
 	private LevelScreen level;
 	private boolean isClone = false;
-	private float lifeTimer = 0;
+	private float lifeTimer = 0f;
 	private final float CLONE_DURATION = 3.0f;
-	private float cloneDieTimer = 0;
 
-	// Distanza di attivazione per iniziare a lanciare magie
+	private float cloneDieTimer = 0f;
+
+	// --- DISAPPEAR / APPEAR LOGIC ---
+	private boolean disappearing = false;
+	private boolean noHead = false;
+	private float disappearTimer = 0f;
+	private final float REAPPEAR_DELAY = 0.3f;
+
+	private float appearTimer = 0f; // Timer di apparizione
+	private boolean invulnerable = false;
+
+	private boolean headLaunched = false;
+
 	private final float ACTIVATION_RANGE = 200f;
 
 	public Hunchback(float x, float y, boolean isClone, LevelScreen screen) {
-		super(x, y, isClone ? 1 : 40); // Boss con 40 HP
-		this.isClone = isClone;
-		this.speed = 0; // Resta fermo a fine livello
-		this.facingRight = this.isClone; // Guarda verso sinistra (Thomas che arriva)
-		this.hurtbox = new Rectangle(x, y, 25, 60);
-		this.active = true; // <--- FORZA active a true
-		this.isDying = false;
-		this.level = screen;
-		this.stateTime = 0; // <--- RESETTA il tempo
-		this.lifeTimer = 0;
+		super(x, y, isClone ? 1 : 40);
 
-		// Lo stato deve essere ATTACKING per essere visibile subito
-		if (this.isClone)
-			this.state = EnemyState.ATTACKING;
+		this.isClone = isClone;
+		this.level = screen;
+
+		this.speed = 0;
+		this.facingRight = this.isClone;
+		this.hurtbox = new Rectangle(x, y, 25, 60);
+
+		this.currentState = isClone ? EnemyState.ATTACKING : EnemyState.WAITING;
+		this.active = true;
+		this.isDying = false;
 
 		this.position.set(x, y);
-		this.hurtbox = new Rectangle(x, y, 25, 60);
-	}
-
-	private void updateDyingClonePhysics(float dt) {
-		stateTime += dt;
-		cloneDieTimer += dt;
-		// Effetto volo all'indietro rispetto a dove guarda
-//		position.x += (facingRight ? -80 : 80) * dt;
-//		position.y += velocityY * dt;
-//		velocityY -= 1000 * dt; // Gravità arcade
-		if (cloneDieTimer > 1.0f)
-			active = false;
+		this.stateTime = 0;
+		this.lifeTimer = 0;
 	}
 
 	@Override
 	public void update(float dt, Player player) {
-		if (isDying) {
-			if (this.isClone) {
-				updateDyingClonePhysics(dt);
-			} else {
-				updateDyingPhysics(dt);
-				return;
-			}
-		}
 
-		stateTime += dt;
-		if (isClone) {
-			lifeTimer += dt;
-			// Il clone cammina verso il player o lancia una sola fiamma e sparisce
-			position.x += (facingRight ? speed : -speed) * dt;
-			if (lifeTimer > CLONE_DURATION) {
+		// ---------- DEATH ----------
+		if (currentState == EnemyState.DEAD || isDying) {
+			stateTime += dt;
+			updateDyingPhysics(dt);
+
+			if (HunchbackRes.dieAnim.isAnimationFinished(stateTime)) {
 				active = false;
-				System.out
-						.println("Clone rimosso. Motore: " + (lifeTimer > CLONE_DURATION ? "Timeout" : "Culling/Hit"));
 			}
-		} else {
+			return;
+		}
 
-			float dist = Math.abs(position.x - player.position.x);
+		// ---------- DISAPPEARING ----------
+		if (disappearing) {
 
-			// 1. LOGICA DI ATTIVAZIONE
-			if (currentState == EnemyState.WAITING && dist < ACTIVATION_RANGE) {
-				currentState = EnemyState.IDLE;
+			disappearTimer += dt;
+			stateTime += dt;
+
+			hurtbox.set(0, 0, 0, 0);
+
+			if (disappearTimer >= REAPPEAR_DELAY) {
+				disappearing = false;
+				noHead = false;
+				appearTimer = 0;
+				invulnerable = true;
+				stateTime = 0;
 			}
+			return;
+		}
 
-			// 2. CICLO DI ATTACCO
-			if (currentState != EnemyState.WAITING && currentState != EnemyState.DEAD) {
-				attackTimer += dt;
+		// ---------- APPEARING ----------
+		if (invulnerable) {
 
-				if (attackTimer > ATTACK_COOLDOWN && currentState != EnemyState.ATTACKING) {
-					startRandomAttack();
-					attackTimer = 0;
-				}
-			}
+			appearTimer += dt;
+			stateTime += dt;
 
-			// Torna in IDLE dopo l'animazione di attacco
-			if (currentState == EnemyState.ATTACKING && HunchbackRes.attackHighAnim.isAnimationFinished(stateTime)) {
-				currentState = EnemyState.IDLE;
+			if (appearTimer < 0.3f) {
+				hurtbox.set(0, 0, 0, 0);
+			} else {
+				invulnerable = false;
+				appearTimer = 0;
 			}
 		}
 
-		// Aggiorna sempre la hurtbox sulla posizione fissa
-		hurtbox.setPosition(position.x - 12, position.y);
+		// ---------- CLONE ----------
+		if (isClone) {
+			stateTime += dt;
+			lifeTimer += dt;
+
+			position.x += (facingRight ? speed : -speed) * dt;
+
+			if (lifeTimer >= CLONE_DURATION) {
+				active = false;
+			}
+
+			hurtbox.setPosition(position.x - 12, position.y);
+			return;
+		}
+
+		// ---------- NORMAL HUNCHBACK ----------
+		stateTime += dt;
+
+		float dist = Math.abs(position.x - player.position.x);
+
+		if (currentState == EnemyState.WAITING && dist < ACTIVATION_RANGE) {
+			currentState = EnemyState.IDLE;
+			stateTime = 0;
+		}
+
+		if (currentState != EnemyState.WAITING) {
+			attackTimer += dt;
+
+			if (attackTimer > ATTACK_COOLDOWN && currentState != EnemyState.ATTACKING) {
+				startRandomAttack();
+				attackTimer = 0;
+			}
+		}
+
+		if (currentState == EnemyState.ATTACKING && HunchbackRes.attackHighAnim.isAnimationFinished(stateTime)) {
+			currentState = EnemyState.IDLE;
+		}
+
+		// ✅ SEMPRE RIPRISTINARE LA HURTBOX SE NON INVULNERABILE
+		if (!invulnerable && !disappearing) {
+			hurtbox.set(position.x - 12, position.y, 25, 60);
+		}
 	}
 
 	@Override
 	public void hit(Player p, LevelScreen level) {
+
+		if (invulnerable || disappearing || currentState == EnemyState.DEAD) {
+			return;
+		}
+
 		super.hit(p, level);
+
 		if (isClone) {
-			this.isDying = true; // Il clone esplode subito
-			// this.active = false;
-			System.out.println("Clone rimosso. Motore: " + (lifeTimer > CLONE_DURATION ? "Timeout" : "Culling/Hit"));
+			startCloneDeath();
+			return;
+		}
+
+		if (this.hp <= 0) {
+			triggerDeath();
+			return;
+		}
+
+		boolean isLowKick = p.currentState == Player.State.KICKING_CROUCH;
+
+		boolean isHeadLossAttack = p.currentState == Player.State.KICKING || p.currentState == Player.State.KICKING_JUMP
+				|| p.currentState == Player.State.PUNCHING || p.currentState == Player.State.PUNCHING_JUMP;
+
+		if (isLowKick) {
+			startDisappear(false);
+			return;
+		}
+
+		if (isHeadLossAttack) {
+			startDisappear(true);
+			return;
+		}
+	}
+
+	private void startCloneDeath() {
+		this.disappearing = true;
+		this.noHead = false; // i cloni non perdono la testa
+		this.invulnerable = true;
+
+		this.disappearTimer = 0;
+		this.appearTimer = 0;
+		this.stateTime = 0;
+
+		hurtbox.set(0, 0, 0, 0);
+	}
+
+	private void startDisappear(boolean loseHead) {
+
+		this.disappearing = true;
+		this.noHead = loseHead;
+		this.invulnerable = true;
+
+		this.disappearTimer = 0;
+		this.appearTimer = 0;
+		this.stateTime = 0;
+
+		hurtbox.set(0, 0, 0, 0);
+
+		if (loseHead && !headLaunched) {
+			headLaunched = true;
+
+			((Level4Screen) level).headProjectiles.add(new HeadProjectile(position.x, position.y + 40, facingRight));
 		}
 	}
 
@@ -132,44 +230,54 @@ public class Hunchback extends Enemy {
 	}
 
 	private void spawnCrow() {
-		System.out.println("MAGIA: Lancio Corvo ad altezza testa!");
-		// Qui chiamerai: level.spawnCrow(position.x, position.y + 45, facingRight);
 		((Level4Screen) level).crows.add(new Crow(position.x, position.y + 45, facingRight));
-		// AudioRes.playSound(AudioRes.crowSound); // Se hai un jingle per il corvo
 	}
 
 	private void spawnMagicFlame() {
-
 		boolean diagonal = MathUtils.randomBoolean();
 		float spawnY = diagonal ? position.y + 80 : position.y + 45;
+
 		((Level4Screen) level).flames.add(new MagicFlame(position.x, spawnY, facingRight, diagonal));
-//        if (diagonal) {
-//            System.out.println("MAGIA: Fiamma Diagonale dall'alto!");
-//        } else {
-//            System.out.println("MAGIA: Fiamma Orizzontale altezza testa!");
-//        }
 	}
 
 	private void spawnIllusionClone() {
-		if (this.isClone) {
-			System.out.println("A Clone cannot spawn a clone.");
-		} else {
-			System.out.println("MAGIA: Appare un clone dall'altro lato!");
+		if (!isClone) {
 			Hunchback clone = new Hunchback(level.player.position.x - 30, position.y, true, level);
+
 			((Level4Screen) level).enemies.add(clone);
 		}
 	}
 
 	@Override
 	public void draw(SpriteBatch batch) {
+
 		TextureRegion frame;
-		if (isDying) {
-			if (this.isClone) {
-				frame = HunchbackRes.disappearAnim.getKeyFrame(stateTime);
-			} else {
-				frame = HunchbackRes.dieAnim.getKeyFrame(stateTime);
-			}
-		} else if (currentState == EnemyState.ATTACKING) {
+
+		// DEAD
+		if (currentState == EnemyState.DEAD || isDying) {
+			frame = HunchbackRes.dieAnim.getKeyFrame(stateTime, false);
+			drawHelper(batch, frame);
+			return;
+		}
+
+		// DISAPPEAR
+		if (disappearing) {
+			frame = noHead ? HunchbackRes.disappearNoHeadAnim.getKeyFrame(stateTime, false)
+					: HunchbackRes.disappearAnim.getKeyFrame(stateTime, false);
+
+			drawHelper(batch, frame);
+			return;
+		}
+
+		// APPEAR
+		if (invulnerable && appearTimer < 0.3f) {
+			frame = HunchbackRes.appearAnim.getKeyFrame(stateTime, false);
+			drawHelper(batch, frame);
+			return;
+		}
+
+		// NORMAL ANIMATIONS
+		if (currentState == EnemyState.ATTACKING) {
 			frame = HunchbackRes.attackHighAnim.getKeyFrame(stateTime, false);
 		} else {
 			frame = HunchbackRes.walkAnim.getKeyFrame(stateTime, true);
@@ -178,17 +286,23 @@ public class Hunchback extends Enemy {
 		drawHelper(batch, frame);
 	}
 
-	// Metodi necessari per l'interfaccia Enemy
+	public void triggerDeath() {
+		this.currentState = EnemyState.DEAD;
+		this.isDying = true;
+		this.stateTime = 0;
+		this.velocityY = 400f;
+		this.hurtbox.set(0, 0, 0, 0);
+	}
+
 	@Override
 	public void flee() {
 		this.active = false;
-		System.out.println("Clone rimosso. Flee Motore: " + (lifeTimer > CLONE_DURATION ? "Timeout" : "Culling/Hit"));
 	}
 
 	@Override
 	public Rectangle getHitBox() {
 		return null;
-	} // Non tocca fisicamente il player
+	}
 
 	@Override
 	public EnemyState getState() {
@@ -196,8 +310,8 @@ public class Hunchback extends Enemy {
 	}
 
 	@Override
-	public void setState(EnemyState newState) {
-		this.currentState = newState;
+	public void setState(EnemyState s) {
+		this.currentState = s;
 	}
 
 	@Override
@@ -207,10 +321,6 @@ public class Hunchback extends Enemy {
 
 	@Override
 	public int getDieScoreValue() {
-		if (this.isClone) {
-			return 50;
-		} else {
-			return 5000;
-		}
+		return isClone ? 50 : 5000;
 	}
 }

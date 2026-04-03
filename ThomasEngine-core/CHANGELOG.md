@@ -2,6 +2,9 @@
 
 ---
 
+### 0.0.34
+- 
+
 ### 0.0.33
 - Sylvia actor implemented
 - Level 5 hug sequence implemented

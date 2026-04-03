@@ -85,7 +85,7 @@ public class LevelConstants {
 	public final static int FORTH_FLOOR_GROUND_Y = 701;
 	public final static int FORTH_FLOOR_LEFT = 30;
 	public final static int FORTH_FLOOR_CEILING = 831;
-	public final static int FORTH_FLOOR_RIGHT_STAIR = 1645;
+	public final static int FORTH_FLOOR_RIGHT_STAIR = 1665;
 	public final static int FORTH_FLOOR_RIGHT = 1775;
 	public final static int FORTH_FLOOR_BOSS_ICON = 1553;
 	public static final float FORTH_FLOOR_GRIPPER_SPEED = 60f;
